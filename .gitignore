@@ -1,0 +1,9 @@
+.idea/
+env/
+env3/
+tags
+__pycache__
+.DS_Store
+*.swo
+*.swp
+*.pyc
