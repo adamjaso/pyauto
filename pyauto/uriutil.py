@@ -13,7 +13,7 @@ def parse(uri):
         scheme=parts.scheme,
         netloc=parts.netloc,
         path=parts.path,
-        query=OrderedDict(urlparse.parse_qsl(parts.query, True)),
+        query=parse_query(parts.query),
         frag=parts.fragment,
     )
 
@@ -27,6 +27,10 @@ def format(**kwargs):
         format_query(kwargs.get('query', {})),
         kwargs.get('frag'),
     ))
+
+
+def parse_query(qstr):
+    return OrderedDict(urlparse.parse_qsl(qstr, True))
 
 
 def format_query(*qargs, **query):

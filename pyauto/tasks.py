@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import sys
 import inspect
+import importlib
 from collections import OrderedDict
 from . import yamlutil
 
@@ -11,9 +12,12 @@ def _get_arg_names(module, func_name):
 
 
 def _is_valid_func(task_module, task_name):
-    if not callable(getattr(task_module, task_name)):
+    func = getattr(task_module, task_name)
+    if not callable(func) or inspect.isclass(func):
         return False
     arg_names = _get_arg_names(task_module, task_name)
+    if len(arg_names) < 1:
+        return False
     return 'config' == arg_names[0]
 
 
@@ -25,7 +29,11 @@ class TaskSequences(object):
     def __init__(self, task_modules, task_dict, config):
         self.config = config
         self.task_dict = task_dict
-        self.task_modules = [sys.modules[m] for m in task_modules]
+        self.task_modules = [sys.modules['__main__']]
+        for m in task_modules:
+            if '__main__' != m:
+                m = importlib.import_module(m)
+                self.task_modules.append(m)
 
     def get_task(self, task_name):
         for sm in self.task_modules:

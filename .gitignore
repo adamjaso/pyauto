@@ -1,9 +1,14 @@
 .idea/
 env/
 env3/
-tags
-__pycache__
+dist/
+__pycache__/
+workspace/
+*.egg-info
 .DS_Store
+tags
+tags.temp
+tags.lock
 *.swo
 *.swp
 *.pyc
