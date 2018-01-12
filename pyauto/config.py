@@ -8,6 +8,20 @@ from . import tasks
 _config_classes = {}
 
 
+class ConfigList(list):
+    def __init__(self, items, parent, config_class):
+        super(ConfigList, self).__init__(items)
+        self.config_class = config_class
+        for index, item in enumerate(self):
+            self[index] = config_class(item, parent)
+
+    def get_tag(self, tag):
+        for item in self:
+            if item['id'] == tag:
+                return item
+        raise Exception('unknown {0}: {1}'.format(self.config_class.__name__))
+
+
 class Config(dict):
     _cache = None
     _task_sequences = None
@@ -110,6 +124,13 @@ class Config(dict):
             return OrderedDict(kvs)
 
         return to_dict(self)
+
+    @classmethod
+    def wrap(cls, config, parent=None):
+        if isinstance(config, list):
+            return ConfigList(config, parent, cls)
+        else:
+            return cls(config, parent)
 
 
 def load(filename, dirname=None):

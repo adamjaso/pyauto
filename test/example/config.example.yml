@@ -5,6 +5,8 @@ example:
   - id: abc
   - id: def
 example2: {}
+example_list:
+- id: test
 tasks:
   do_things:
   - do_thing,thing1

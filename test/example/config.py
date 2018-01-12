@@ -17,4 +17,5 @@ class Thing(config.Config):
     pass
 
 
-config.set_config_class('example', Example)
+config.set_config_class('example', Example.wrap)
+config.set_config_class('example_list', Thing.wrap)
