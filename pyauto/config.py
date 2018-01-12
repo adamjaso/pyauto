@@ -8,28 +8,42 @@ from . import tasks
 _config_classes = {}
 
 
-class ConfigList(list):
+class ConfigList(object):
     def __init__(self, items, parent, config_class):
         super(ConfigList, self).__init__(items)
         self.config_class = config_class
-        for index, item in enumerate(self):
-            self[index] = config_class(item, parent)
+        self.items = items
+        for index, item in enumerate(self.items):
+            self.items[index] = config_class(item, parent)
 
     def get_tag(self, tag):
-        for item in self:
+        for item in self.items:
             if item['id'] == tag:
                 return item
         raise Exception('unknown {0}: {1}'.format(self.config_class.__name__))
 
+    def __iter__(self):
+        return self.items
 
-class Config(dict):
+    def __len__(self):
+        return len(self.items)
+
+    def __getitem__(self, item):
+        return self.items[item]
+
+    def __setitem__(self, item, value):
+        self.items[item] = value
+
+
+class Config(object):
+    _dict = None
     _cache = None
     _task_sequences = None
     _dirname = None
 
     def __init__(self, config_dict, parent=None, dirname=None):
-        super(Config, self).__init__(config_dict)
         self.config = parent
+        self._dict = config_dict
         self._cache = {}
         self._dirname = dirname
         if dirname is None and parent is not None:
@@ -44,7 +58,7 @@ class Config(dict):
         return self.__getitem__(item, None)
 
     def __getitem__(self, item, default=None):
-        val = self.get(item, default)
+        val = self._dict.get(item, default)
         if self.__class__ != Config:
             return val
         if item not in _config_classes:
@@ -52,6 +66,15 @@ class Config(dict):
         if item not in self._cache:
             self._cache[item] = _config_classes[item](val, parent=self)
         return self._cache[item]
+
+    def __setitem__(self, item, value):
+        self._dict[item] = value
+
+    def __contains__(self, item):
+        return item in self._dict
+
+    def get(self, item, default=None):
+        return self.__getitem__(item, default)
 
     def get_path(self, *path):
         if self._dirname is None:
@@ -108,22 +131,22 @@ class Config(dict):
     def to_dict(self):
 
         def to_dict(value):
-            if not isinstance(value, dict):
+            if isinstance(value, Config):
+                return value.to_dict()
+            elif not isinstance(value, (ConfigList, dict)):
                 return value
 
             kvs = []
             for name, value in value.items():
-                if isinstance(value, Config):
-                    kvs.append((name, value.to_dict()))
-                elif isinstance(value, dict):
-                    kvs.append((name, dict(value)))
+                if isinstance(value, (Config, dict)):
+                    kvs.append((name, to_dict(value)))
                 elif isinstance(value, list):
                     kvs.append((name, [to_dict(v) for v in value]))
                 else:
                     kvs.append((name, value))
             return OrderedDict(kvs)
 
-        return to_dict(self)
+        return to_dict(self._dict)
 
     @classmethod
     def wrap(cls, config, parent=None):
@@ -135,7 +158,7 @@ class Config(dict):
 
 def load(filename, dirname=None):
     with open(filename) as f:
-        config = yaml.load(f.read())
+        config = yamlutil.load_dict(f)
         return Config(config, dirname=dirname)
 
 

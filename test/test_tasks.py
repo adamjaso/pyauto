@@ -150,4 +150,4 @@ class TestTask(TestCase):
                 config)
         task = pyauto_tasks.Task(tasks, 'do_thing,jkl')
         res = task.invoke()
-        self.assertDictEqual(res, OrderedDict([('id', 'jkl')]))
+        self.assertDictEqual(res.to_dict(), OrderedDict([('id', 'jkl')]))

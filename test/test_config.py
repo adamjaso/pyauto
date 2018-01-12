@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 from unittest import TestCase
 import test.example.commands as example_commands
@@ -20,7 +21,7 @@ class TestConfig(TestCase):
     def test_registered_module(self):
         self.assertIn('example', pyauto_config._config_classes)
         self.assertEqual(pyauto_config._config_classes['example'],
-                         example_config.Example)
+                         example_config.Example.wrap)
         self.assertIsInstance(config.example, example_config.Example)
         self.assertIsInstance(config['example'], example_config.Example)
 
@@ -36,4 +37,4 @@ class TestConfig(TestCase):
 
     def test_get_resource(self):
         res = config.get_resource('example/get_thing,abc')
-        self.assertDictEqual(res, {'id': 'abc'})
+        self.assertDictEqual(res.to_dict(), {'id': 'abc'})
