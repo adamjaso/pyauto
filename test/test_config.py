@@ -38,3 +38,7 @@ class TestConfig(TestCase):
     def test_get_resource(self):
         res = config.get_resource('example/get_thing,abc')
         self.assertDictEqual(res.to_dict(), {'id': 'abc'})
+
+    def test_get_tag(self):
+        res = config.example_list.get_tag('test')
+        self.assertDictEqual(res.to_dict(), {'id': 'test'})

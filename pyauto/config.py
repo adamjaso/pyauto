@@ -10,7 +10,6 @@ _config_classes = {}
 
 class ConfigList(object):
     def __init__(self, items, parent, config_class):
-        super(ConfigList, self).__init__(items)
         self.config_class = config_class
         self.items = items
         for index, item in enumerate(self.items):
@@ -45,7 +44,8 @@ class Config(object):
         self.config = parent
         self._dict = config_dict
         self._cache = {}
-        self._dirname = dirname
+        if dirname is not None:
+            self._dirname = os.path.abspath(dirname)
         if dirname is None and parent is not None:
             self._dirname = parent._dirname
         if 'tasks' in config_dict:
@@ -53,6 +53,10 @@ class Config(object):
             task_modules.insert(0, '__main__')
             self._task_sequences = tasks.TaskSequences(
                 task_modules, config_dict['tasks'], self)
+
+    @property
+    def task_sequences(self):
+        return self._task_sequences
 
     def __getattr__(self, item):
         return self.__getitem__(item, None)
