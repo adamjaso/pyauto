@@ -58,6 +58,9 @@ class Config(object):
     def task_sequences(self):
         return self._task_sequences
 
+    def __repr__(self):
+        return str(self._dict)
+
     def __getattr__(self, item):
         return self.__getitem__(item, None)
 
@@ -161,6 +164,8 @@ class Config(object):
 
 
 def load(filename, dirname=None):
+    if dirname is None:
+        dirname = os.getcwd()
     with open(filename) as f:
         config = yamlutil.load_dict(f)
         return Config(config, dirname=dirname)

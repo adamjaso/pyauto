@@ -35,6 +35,10 @@ class TaskSequences(object):
                 m = importlib.import_module(m)
                 self.task_modules.append(m)
 
+    @property
+    def module_names(self):
+        return [m.__name__ for m in self.task_modules]
+
     def get_task(self, task_name):
         for sm in self.task_modules:
             if hasattr(sm, task_name):

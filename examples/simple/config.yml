@@ -1,0 +1,11 @@
+# config.yml
+task_modules:
+- deployment_tasks
+apps:
+- id: my_app
+  name: My Application
+  source_dir: ./my_app
+tasks:
+  deploy_my_app:
+  - deploy_app,my_app
+
