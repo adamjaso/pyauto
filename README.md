@@ -55,3 +55,62 @@ class App(config.Config):
 
 config.set_config_class('apps', App.wrap)
 ```
+
+### How is it used?
+
+As a CLI tool.
+
+#### Run the task
+
+```bash
+$ python -m pyauto.deploy -c config.yml deploy,my_app
+```
+
+Outputs
+
+```
+----- deployment_tasks.deploy_app ( my_app  ) -----
+deploying my_app...
+OrderedDict([('id', 'my_app'), ('name', 'My Application'), ('source_dir', './my_app')])
+deploy_app,my_app = None
+```
+
+The "," separates the function from the string arguments. All tasks functions
+*must* accept string only arguments.
+
+#### Run a sequence of tasks
+
+```bash
+$ python -m pyauto.deploy -c config.yml deploy_my_app
+```
+
+Outputs
+
+```
+----- deployment_tasks.deploy_app ( my_app  ) -----
+deploying my_app...
+OrderedDict([('id', 'my_app'), ('name', 'My Application'), ('source_dir', './my_app')])
+deploy_app,my_app = None
+```
+
+The task sequence `deploy_my_app` is looked up from the `tasks` section of the config.
+A task sequence may list as many tasks or task sequences as desired. Every item
+will always be executed when the task sequence is invoked.
+
+#### Dry-run a sequence of tasks
+
+```bash
+$ python -m pyauto.deploy -c config.yml deploy_my_app -i
+```
+
+Outputs
+
+```
+deploy_my_app (  )
+    deployment_tasks.deploy_app ( my_app  )
+```
+
+This shows the sequence of tasks that will be run. This is a trivial example,
+but you may also invoke other task sequences from a task sequence, which can
+lead to a complex order of tasks. This feature allows you to view what will be
+by a given task sequence executed before you execute it.
