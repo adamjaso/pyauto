@@ -118,5 +118,5 @@ deploy_my_app (  )
 
 This shows the sequence of tasks that will be run. This is a trivial example,
 but you may also invoke other task sequences from a task sequence, which can
-lead to a complex order of tasks. This feature allows you to view what will be
-by a given task sequence executed before you execute it.
+lead to a complex order of tasks. This feature allows you to inspect what a given
+task sequence will execute before you execute it.
