@@ -75,7 +75,7 @@ OrderedDict([('id', 'my_app'), ('name', 'My Application'), ('source_dir', './my_
 deploy_app,my_app = None
 ```
 
-The "," separates the function from the string arguments. All tasks functions
+The "," separates the function from the string arguments. All task functions
 *must* accept string only arguments.
 
 #### Run a sequence of tasks
@@ -93,6 +93,12 @@ OrderedDict([('id', 'my_app'), ('name', 'My Application'), ('source_dir', './my_
 deploy_app,my_app = None
 ```
 
+Line 1 of the output indicates the function invoked, with the arguments passed to it.
+Lines 2-3 of the output indicate the standard output of the function's execution
+Last line of the output indicates 1) the original function invocation string and 2) the return value of the function.
+
+If you wish to suppress output of line 1 and last line, you can pass the `-q` option to have PyAuto omit those lines.
+
 The task sequence `deploy_my_app` is looked up from the `tasks` section of the config.
 A task sequence may list as many tasks or task sequences as desired. Every item
 will always be executed when the task sequence is invoked.
@@ -107,7 +113,7 @@ Outputs
 
 ```
 deploy_my_app (  )
-    deployment_tasks.deploy_app ( my_app  )
+    deployment_tasks.deploy_app ( my_app )
 ```
 
 This shows the sequence of tasks that will be run. This is a trivial example,
