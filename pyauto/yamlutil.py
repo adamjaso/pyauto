@@ -2,11 +2,6 @@ import yaml
 from collections import OrderedDict
 
 
-###############################################################################
-## YAML customization
-###############################################################################
-
-
 def dump_dict(data_dict, **kwargs):
     kwargs['allow_unicode'] = True
     kwargs['default_flow_style'] = False
@@ -29,7 +24,6 @@ def load_dict(stream, **kwargs):
     OrderedLoader.add_constructor(
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping)
     return yaml.load(stream, OrderedLoader)
-
 
 
 def _should_use_block(value):

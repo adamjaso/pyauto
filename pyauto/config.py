@@ -1,4 +1,6 @@
-import sys, json, yaml, os
+import os
+import sys
+import json
 from pyauto import yamlutil
 from collections import OrderedDict
 from .strutil import root_prefix
@@ -116,7 +118,6 @@ class Config(object):
                             'The "tasks" attribute is not set.')
 
     def run_task_sequences(self, *actions, **kwargs):
-        quiet = kwargs.get('quiet', False)
         inspect = kwargs.get('inspect', False)
         tree = kwargs.get('tree', False)
 

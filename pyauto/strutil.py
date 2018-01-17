@@ -61,8 +61,9 @@ def get_file_size(filename):
 
 
 def copytree(src, dst, symlinks=False, ignore=None):
-    """This is a replacement for shutil.copytree that does not crash when the destination directory
-    already exists. Other than that, this function is identical to shutil.copytree.
+    """This is a replacement for shutil.copytree that does not crash when the
+    destination directory already exists. Other than that, this function is
+    identical to shutil.copytree.
     """
     names = os.listdir(src)
     if ignore is not None:
@@ -70,7 +71,7 @@ def copytree(src, dst, symlinks=False, ignore=None):
     else:
         ignored_names = set()
 
-    if not os.path.isdir(dst): # This one line does the trick
+    if not os.path.isdir(dst):  # This one line does the trick
         os.makedirs(dst)
     errors = []
     for name in names:
@@ -96,7 +97,8 @@ def copytree(src, dst, symlinks=False, ignore=None):
     try:
         shutil.copystat(src, dst)
     except OSError as why:
-        if shutil.WindowsError is not None and isinstance(why, shutil.WindowsError):
+        if shutil.WindowsError is not None and \
+                isinstance(why, shutil.WindowsError):
             # Copying file access times may fail on Windows
             pass
         else:

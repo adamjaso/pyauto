@@ -1,6 +1,5 @@
 import os
 import re
-import jinja2
 import jinja2.ext
 from jinja2 import Environment
 from jinja2 import FileSystemLoader
@@ -36,4 +35,3 @@ def get_template_renderer(templates_dirname):
         return env.get_template(filename).render(**kwargs)
 
     return _render
-
