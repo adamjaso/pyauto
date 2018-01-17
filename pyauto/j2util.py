@@ -37,7 +37,3 @@ def get_template_renderer(templates_dirname):
 
     return _render
 
-
-def render(env, filename, **kwargs):
-    return env.get_template(filename).render(**kwargs)
-

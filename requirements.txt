@@ -1,2 +1,3 @@
 PyYAML
 six
+jinja2
