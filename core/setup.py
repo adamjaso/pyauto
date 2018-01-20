@@ -7,7 +7,7 @@ dirname = path.realpath(path.dirname(__file__))
 with open(path.join(dirname, 'requirements.txt')) as f:
     reqs = [l for l in f.read().strip().split('\n') if not l.startswith('-')]
 
-license = path.join(dirname, '../LICENSE')
+license = path.join(dirname, 'LICENSE')
 readme = path.join(dirname, 'README.md')
 
 setup(
