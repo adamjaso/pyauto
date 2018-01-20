@@ -1,10 +1,9 @@
 import os
 import sys
 import json
-from pyauto import yamlutil
 from collections import OrderedDict
+from . import yamlutil, tasks
 from .strutil import root_prefix
-from . import tasks
 
 
 _config_classes = {}

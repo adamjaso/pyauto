@@ -4,14 +4,7 @@ A task running tool
 
 ## What is this?
 
-PyAuto is a minimalist CLI tool for running a sequence of tasks.
-
-## Features
-
-PyAuto provides
-
-1. a project structure for capturing configuration and defining tasks
-2. a plugin structure for implementing custom tasks and associated task configuration
+PyAuto provides a minimalist project structure for capturing configuration and orchestrating tasks.
 
 ### What is a Task?
 
@@ -51,7 +44,7 @@ tasks:
 ```python
 # deployment_config.py
 
-from pyauto.core import config
+from pyauto import config
 import os
 
 
@@ -70,7 +63,7 @@ As a CLI tool.
 #### Run the task
 
 ```bash
-$ python -m pyauto.core.deploy -c config.yml deploy,my_app
+$ python -m pyauto.deploy -c config.yml deploy,my_app
 ```
 
 Outputs
@@ -88,7 +81,7 @@ The "," separates the function from the string arguments. All task functions
 #### Run a sequence of tasks
 
 ```bash
-$ python -m pyauto.core.deploy -c config.yml deploy_my_app
+$ python -m pyauto.deploy -c config.yml deploy_my_app
 ```
 
 Outputs
@@ -113,7 +106,7 @@ will always be executed when the task sequence is invoked.
 #### Dry-run a sequence of tasks
 
 ```bash
-$ python -m pyauto.core.deploy -c config.yml deploy_my_app -i
+$ python -m pyauto.deploy -c config.yml deploy_my_app -i
 ```
 
 Outputs

@@ -1,7 +1,7 @@
 import os
 import yaml
 from six import StringIO
-from pyauto import template
+from pyauto.core import template
 from unittest import TestCase
 
 template_example_dir = os.path.join(

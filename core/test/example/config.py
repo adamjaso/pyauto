@@ -1,4 +1,4 @@
-from pyauto import config
+from pyauto.core import config
 
 
 class Example(config.Config):

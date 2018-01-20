@@ -1,4 +1,4 @@
-from pyauto import deploy
+from pyauto.core import deploy
 from . import config
 
 

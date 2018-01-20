@@ -3,7 +3,7 @@ import os
 from unittest import TestCase
 import test.example.commands as example_commands
 import test.example.config as example_config
-from pyauto import yamlutil, config as pyauto_config
+from pyauto.core import yamlutil, config as pyauto_config
 
 
 config_file = os.path.join(

@@ -3,7 +3,7 @@ from collections import OrderedDict
 from unittest import TestCase
 import test.example.commands as example_commands
 import test.example.config as example_config
-from pyauto import tasks as pyauto_tasks, config as pyauto_config
+from pyauto.core import tasks as pyauto_tasks, config as pyauto_config
 
 
 test_example_commands = 'test.example.commands'

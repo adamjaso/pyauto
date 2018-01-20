@@ -1,6 +1,6 @@
 # deployment_config.py
 
-from pyauto import config
+from pyauto.core import config
 import os
 
 
@@ -10,4 +10,3 @@ class App(config.Config):
 
 
 config.set_config_class('apps', App.wrap)
-

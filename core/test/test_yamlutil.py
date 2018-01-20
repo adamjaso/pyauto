@@ -1,7 +1,7 @@
 from unittest import TestCase
 import yaml
 from collections import OrderedDict
-from pyauto import yamlutil
+from pyauto.core import yamlutil
 
 
 sample_ordered_dict = OrderedDict([
