@@ -17,6 +17,12 @@ rand_chars = ''.join([lowercase, uppercase, string.digits])
 root_prefix = os.path.splitdrive(sys.executable)[0] or '/'
 
 
+def abspath_neighbor(filename, *path):
+    if len(path) == 1 and path[0].startswith(root_prefix):
+        return path[0]
+    return os.path.join(os.path.dirname(filename), *path)
+
+
 def rand_str(n):
     return ''.join(random.sample(rand_chars, n))
 

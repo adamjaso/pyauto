@@ -1,0 +1,5 @@
+six
+jinja2
+netaddr
+requests
+pyauto.core

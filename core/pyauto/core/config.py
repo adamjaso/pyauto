@@ -2,8 +2,9 @@ import os
 import sys
 import json
 from collections import OrderedDict
-from . import yamlutil, tasks
-from .strutil import root_prefix
+from . import tasks
+from pyauto.util import yamlutil
+from pyauto.util.strutil import root_prefix
 
 
 _config_classes = {}

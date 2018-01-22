@@ -4,7 +4,7 @@ import sys
 import inspect
 import importlib
 from collections import OrderedDict
-from . import yamlutil
+from pyauto.util import yamlutil
 
 
 def _get_arg_names(module, func_name):

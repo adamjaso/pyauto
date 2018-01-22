@@ -1,8 +1,8 @@
 import re
 import os
 import sys
-from . import yamlutil
-from .j2util import get_template_renderer
+from pyauto.util import yamlutil
+from pyauto.util.j2util import get_template_renderer
 
 _renderers = {}
 
