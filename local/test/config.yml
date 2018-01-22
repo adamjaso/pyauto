@@ -1,0 +1,13 @@
+local:
+  workspace_dir: workspace
+  template_dir: templates
+  sources:
+  - id: project
+    name: Project
+    directory: sources/tree1
+  destinations:
+  - id: abc
+    name: ABC
+    source: project
+    directory: tree1
+
