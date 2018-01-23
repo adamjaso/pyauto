@@ -1,0 +1,3 @@
+PyYAML
+pyauto.core
+pyauto.util
