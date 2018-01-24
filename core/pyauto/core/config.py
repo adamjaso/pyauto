@@ -21,7 +21,8 @@ class ConfigList(object):
         for item in self.items:
             if item['id'] == tag:
                 return item
-        raise Exception('unknown {0}: {1}'.format(self.config_class.__name__))
+        raise Exception('unknown {0}: {1}'
+                        .format(self.config_class.__name__, tag))
 
     def __iter__(self):
         return self.items
