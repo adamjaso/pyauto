@@ -1,0 +1,10 @@
+local:
+  workspace_dir: workspace
+ouidb:
+  source_url: http://standards-oui.ieee.org/oui.txt
+  source_file: oui.txt
+  dest_file: oui.db
+task_modules:
+- pyauto.local.commands
+- pyauto.ouidb.commands
+tasks: {}
