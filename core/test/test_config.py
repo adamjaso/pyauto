@@ -6,10 +6,9 @@ import example.config as example_config
 from pyauto.util import yamlutil
 from pyauto.core import config as pyauto_config
 
-
+pyauto_config.set_id_key('id')
 config_file = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        'example/config.example.yml')
+    os.path.dirname(os.path.abspath(__file__)), 'example/config.example.yml')
 with open(config_file) as f:
     config_str = f.read().strip()
 config = pyauto_config.load(config_file)
@@ -43,3 +42,4 @@ class TestConfig(TestCase):
     def test_get_tag(self):
         res = config.example_list.get_tag('test')
         self.assertDictEqual(res.to_dict(), {'id': 'test'})
+

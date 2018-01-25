@@ -19,5 +19,5 @@ setup(
     long_description=open(readme).read(),
     packages=find_packages(),
     install_requires=reqs,
-    url='https://github.com/adamjaso/pyauto',
+    url='https://github.com/adamjaso/pyauto/tree/master/core',
 )

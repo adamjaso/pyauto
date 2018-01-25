@@ -8,6 +8,7 @@ from pyauto.util.strutil import root_prefix
 
 
 _config_classes = {}
+_id_key = 'tag'
 
 
 class ConfigList(object):
@@ -19,7 +20,7 @@ class ConfigList(object):
 
     def get_tag(self, tag):
         for item in self.items:
-            if item['id'] == tag:
+            if item[_id_key] == tag:
                 return item
         raise Exception('unknown {0}: {1}'
                         .format(self.config_class.__name__, tag))
@@ -175,3 +176,8 @@ def load(filename, dirname=None):
 
 def set_config_class(name, config_class):
     _config_classes[name] = config_class
+
+def set_id_key(name):
+    global _id_key
+    _id_key = name
+
