@@ -1,0 +1,46 @@
+local:
+  workspace_dir: workspace
+  template_dir: files
+pki:
+  openvpn_bin: /usr/local/sbin/openvpn
+  ca_profiles:
+  - id: ca1
+    directory: pki/ca1
+    ca_dir: ca
+    private_dir: private
+    certs_dir: certs
+    reqs_dir: reqs
+    openvpn_dir: openvpn
+    common_name: pyauto ca
+    default_num_days: 3650
+  profiles:
+  - id: user1
+    ca: ca1
+    profile: client
+  - id: user2
+    ca: ca1
+    profile: client
+  - id: server1
+    ca: ca1
+    profile: server
+
+task_modules:
+- pyauto.local.commands
+- pyauto.pki.commands
+
+tasks:
+  main:
+  - init_pki,ca1
+  - create_user1
+  - create_user2
+  - create_server1
+  create_user1:
+  - create_profile,user1
+  create_user2:
+  - create_profile,user2
+  create_server1:
+  - create_profile,server1
+  revoke_user1:
+  - revoke_cert,user1
+  revoke_user2:
+  - revoke_cert,user1

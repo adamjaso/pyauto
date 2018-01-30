@@ -23,11 +23,13 @@ run_module_tests() {
     echo
     echo "========== $name =========="
     cd $name
+    source env3/bin/activate
     if $(ls test.sh > /dev/null 2>&1); then
         ./test.sh
     else
         nose2 -v
     fi
+    deactivate
     cd $cwd
 }
 

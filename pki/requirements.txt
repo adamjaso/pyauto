@@ -1,0 +1,6 @@
+pyauto.core
+pyauto.local
+pyauto.util
+cryptography
+PyCrypto
+six
