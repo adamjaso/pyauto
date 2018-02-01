@@ -15,7 +15,7 @@ setup(
     version=__version__,
     description='Utility functions',
     author='Adam Jaso',
-    license=open(license).read(),
+    license='GNU General Public License V2',
     long_description=open(readme).read(),
     packages=find_packages(),
     install_requires=reqs,
