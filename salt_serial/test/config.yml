@@ -1,0 +1,9 @@
+local:
+  workspace_dir: workspace
+  template_dir: files
+salt_serial:
+  directory: salt
+  pillar:
+    directory: pillar
+  states:
+    directory: states
