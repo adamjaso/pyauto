@@ -15,10 +15,10 @@ setup(
     version=__version__,
     description='Manages keys, cert requests, and certs in the style of EasyRSA.',
     author='Adam Jaso',
-    license='GNU GENERAL PUBLIC LICENSE version 2',
+    license='GNU General Public License V2',
     long_description=open(readme).read(),
     packages=find_packages(),
     install_requires=reqs,
-    url='https://github.com/adamjaso/pyauto',
+    url='https://github.com/adamjaso/pyauto/tree/master/pki',
 
 )
