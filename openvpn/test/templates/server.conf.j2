@@ -1,0 +1,27 @@
+port {{ port }}  #1194
+proto {{ protocol }}  #udp
+dev {{ vpn_type }}  #tun
+ca {{ ca_cert_file }}  #ca.crt
+cert {{ cert_file }}
+key {{ key_file }}
+dh {{ dh_file }}  #dh.pem
+tls-auth {{ ta_key_file }} 0  #ta.key
+cipher {{ cipher }}  #AES-128-CBC
+user {{ run_user }}  #nobody
+group {{ run_group }}  #nogroup
+server {{ network }} {{ netmask }}
+verb {{ log_verbosity }}  #3
+ifconfig-pool-persist ipp.txt
+push "redirect-gateway def1"
+push "dhcp-option DNS {{ gateway }}"
+client-to-client
+keepalive 10 120
+comp-lzo
+max-clients {{ max_clients }}
+persist-key
+persist-tun
+status openvpn-status.log
+remote-cert-tls client
+{% if management is defined -%}
+management {{ management.get('host', '127.0.0.1')  }} {{ management.get('port', 2194) }} {{ management.get('pw_file', '')  }}
+{%- endif %}

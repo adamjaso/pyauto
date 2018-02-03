@@ -1,0 +1,24 @@
+client
+remote {{ server_host }} {{ port }} #host-or-ip 1194
+proto {{ protocol }}  #udp
+dev {{ vpn_type }}  #tun
+ca {{ ca_cert_file }}  #ca.crt
+cert {{ cert_file }}
+key {{ key_file }}
+#dh {{ dh_file }}  #dh.pem
+tls-auth {{ ta_key_file }} 1  #ta.key
+cipher {{ cipher }}  #AES-128-CBC
+user {{ run_user }}  #root
+group {{ run_group }}  #wheel
+verb {{ log_verbosity }}  #3
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+comp-lzo
+remote-cert-tls server
+auth-nocache
+{{ management }}
+{%- if management is defined -%}
+management {{ management.get('host', '127.0.0.1')  }} {{ management.get('port', 2194) }} {{ management.get('pw_file', '')  }}
+{%- endif -%}

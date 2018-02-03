@@ -1,0 +1,28 @@
+{%- set openvpn = pillar -%}
+
+{%- for iface in grains['ip4_interfaces'].keys() -%}
+  {%- if primary_iface is not defined -%}
+    {%- if 'eth0' == iface -%}
+      {%- set primary_iface = iface -%}
+    {%- elif 'eth1' == iface -%}
+      {%- set primary_iface = iface -%}
+    {%- elif iface.startswith('en') -%}
+      {%- set primary_iface = iface -%}
+    {%- endif -%}
+  {%- endif -%}
+{%- endfor -%}
+{%- if primary_iface is not defined -%}
+  {%- set primary_iface = 'eth0' -%}
+{%- endif -%}
+
+{%- set openvpn_dir = '/etc/openvpn' -%}
+{%- set openvpn_protocol = openvpn.get('protocol', 'tcp') -%}
+{%- set openvpn_port = openvpn.get('port', 443) -%}
+{%- set openvpn_cidr = openvpn.get('cidr', '10.8.0.0/24') -%}
+
+{%- if 'servers' in openvpn -%}
+  {%- set openvpn_servers = openvpn['servers'] -%}
+{%- endif -%}
+{%- if openvpn_servers is not defined -%}
+  {%- set openvpn_servers = [] -%}
+{%- endif -%}

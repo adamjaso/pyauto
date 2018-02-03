@@ -1,0 +1,83 @@
+local:
+  workspace_dir: workspace
+  template_dir: templates
+salt_serial:
+  directory: salt
+  states:
+    directory: states
+  pillar:
+    directory: pillar
+pki:
+  openvpn_bin: /usr/local/sbin/openvpn
+  ca_profiles:
+  - id: openvpn-ca1
+    directory: pki/openvpn-ca1
+    ca_dir: ca
+    private_dir: private
+    certs_dir: certs
+    reqs_dir: reqs
+    openvpn_dir: openvpn
+    common_name: pyauto ca
+    default_num_days: 3650
+  profiles: []
+digitalocean:
+  user_data_template: digitalocean_init.sh
+  token: xxxxxx
+  droplet_profiles:
+    default:
+      size: '512mb'
+      image: 'ubuntu-16-04-x64'
+      ssh_keys:
+      - your ssh key here
+  droplets: []
+openvpn:
+  directory: openvpn
+  ca: openvpn-ca1
+  dh_params_size: 1024
+  dh_params_name: dh
+  ta_key_name: ta
+  pillar:
+    global:
+      protocol: udp
+      vpn_type: tun
+      port: 1194
+      cipher: AES-128-CBC
+      ta_key_file: ta.key
+      ca_cert_file: ca.crt
+      dh_file: dh.pem
+      log_verbosity: 3
+    client:
+      run_user: root
+      run_group: wheel
+    server:
+      run_user: nobody
+      run_group: nogroup
+      cidr: 10.8.0.0/24
+      max_clients: 10
+      management: {}
+  users:
+  - id: turbo
+    name: someone
+    devices:
+    - phone
+    - mbp
+  - id: turbo2
+    name: someone
+    devices:
+    - db-server
+  servers:
+  - id: vpn1-sfo1
+    server_name: vpn1-sfo1
+    users:
+    - turbo
+    digitalocean:
+      name: vpn7
+      region: ams2
+      profile: default
+task_modules:
+- pyauto.local
+- pyauto.digitalocean
+- pyauto.pki
+- pyauto.openvpn
+- pyauto.salt_serial
+tasks: {}

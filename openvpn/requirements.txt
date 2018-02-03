@@ -1,0 +1,7 @@
+pyauto.core>=0.0.5a1
+pyauto.util>=0.0.2
+pyauto.local>=0.0.1
+pyauto.digitalocean
+pyauto.salt_serial
+pyauto.pki
+netaddr
