@@ -1,0 +1,3 @@
+pyauto.core>=0.0.5a1
+pyauto.util>=0.0.2
+python-digitalocean

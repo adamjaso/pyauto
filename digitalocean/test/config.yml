@@ -1,0 +1,18 @@
+local:
+  workspace_dir: workspace
+  template_dir: templates
+digitalocean:
+  user_data_template: user_data.j2
+  token: xxxxxx
+  droplets:
+  - id: db-sfo1
+    name: db
+    region: sfo1
+    profile: default
+    description: Database Server
+  droplet_profiles:
+    default:
+      size: 512mb
+      image: ubuntu-16-04-x64
+      ssh_keys:
+      - 'your ssh key id here'
