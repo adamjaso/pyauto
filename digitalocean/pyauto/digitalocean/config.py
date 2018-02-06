@@ -61,10 +61,8 @@ class Droplet(dict):
             create_opts['user_data'] = \
                 self.config.config.local.render_template(
                     self.config.user_data_template,
-                    **kwargs.get('user_data', {'username': 'jdoe'})
-#                    pillar_str=kwargs.get('pillar_str', ''),
-#                    salt_str=kwargs.get('salt_str', '')
-                    )
+                    **kwargs.get('user_data', '')
+                )
         create_opts['tags'] = [self.droplet_tag]
         return create_opts
 
@@ -80,15 +78,6 @@ class Droplet(dict):
                 actions = droplet.get_events()
             droplet.load()
         return droplet
-#        return {
-#            'id': droplet.id,
-#            'ipv4': [ip['ip_address'] for ip in droplet.networks.get('v4', []) if 'public' == ip['type']],
-#            'name': droplet.name,
-#            'image': droplet.image['slug'],
-#            'size': droplet.size['slug'],
-#            'region': droplet.region['slug'],
-#            'tags': droplet.tags
-#        }
 
 
 config.set_config_class('digitalocean', Digitalocean)
