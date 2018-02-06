@@ -59,7 +59,8 @@ class Config(object):
                 task_modules, config_dict['tasks'], self)
 
     def get_id(self):
-        return self[config._id_key]
+        global _id_key
+        return self[_id_key]
 
     @property
     def task_sequences(self):
