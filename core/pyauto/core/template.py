@@ -3,6 +3,7 @@ import os
 import sys
 from pyauto.util import yamlutil
 from pyauto.util.j2util import get_template_renderer
+from collections import OrderedDict
 
 _renderers = {}
 
@@ -17,10 +18,8 @@ def render_file(filename, **kwargs):
     return _renderers[dirname](basename, **kwargs)
 
 
-def render_files(values_file, template_files, write, **kwargs):
+def render_files(values, template_files, write, **kwargs):
     concat = kwargs.get('concat', '')
-    with open(values_file) as f:
-        values = yamlutil.load_dict(f)
     num_template_files = len(template_files)
     for index, tfile in enumerate(template_files):
         data = render_file(tfile, **values).strip() + os.linesep
@@ -29,22 +28,22 @@ def render_files(values_file, template_files, write, **kwargs):
         write(tfile, data)
 
 
-def render_files_to_stream(values_file, template_files, stream, **kwargs):
+def render_files_to_stream(values, template_files, stream, **kwargs):
 
     def write(tfile, data):
         if kwargs.get('verbose', False):
             print('rendered {0}'.format(tfile))
         stream.write(data)
 
-    render_files(values_file, template_files, write, **kwargs)
+    render_files(values, template_files, write, **kwargs)
 
 
-def render_files_to_file(values_file, template_files, output_file, **kwargs):
+def render_files_to_file(values, template_files, output_file, **kwargs):
     with open(output_file, 'w') as f:
-        render_files_to_stream(values_file, template_files, f, **kwargs)
+        render_files_to_stream(values, template_files, f, **kwargs)
 
 
-def render_files_to_dir(values_file, template_files, output_dir, **kwargs):
+def render_files_to_dir(values, template_files, output_dir, **kwargs):
 
     def write(tfile, data):
         name = re.sub('\.j2$', '', os.path.basename(tfile))
@@ -54,14 +53,23 @@ def render_files_to_dir(values_file, template_files, output_dir, **kwargs):
         with open(output_file, 'w') as f:
             f.write(data)
 
-    render_files(values_file, template_files, write, **kwargs)
+    render_files(values, template_files, write, **kwargs)
+
+
+def build_values(values_files):
+    values_files = [os.path.abspath(p) for p in values_files]
+    values = OrderedDict()
+    for values_file in values_files:
+        with open(values_file) as f:
+            values.update(yamlutil.load_dict(f))
+    return values
 
 
 def main():
     import argparse
     args = argparse.ArgumentParser()
     args.add_argument('-f', '--values',
-                      dest='values_file', required=True)
+                      dest='values_files', nargs='+', required=True)
     args.add_argument('-o', '--output',
                       dest='output_file', nargs='?', default='-')
     args.add_argument('-i', '--templates',
@@ -71,20 +79,21 @@ def main():
     args = args.parse_args()
 
     output_file = os.path.abspath(args.output_file)
-    values_file = os.path.abspath(args.values_file)
+    values = build_values(args.values_files)
+
     kwargs = {'verbose': args.verbose, 'concat': args.concat}
 
     if '-' == args.output_file:
-        render_files_to_stream(values_file, args.template_files,
+        render_files_to_stream(values, args.template_files,
                                sys.stdout, **kwargs)
 
     elif not os.path.isdir(output_file):
-        render_files_to_file(values_file, args.template_files,
+        render_files_to_file(values, args.template_files,
                              output_file, **kwargs)
 
     else:
         output_file = output_file or os.getcwd()
-        render_files_to_dir(values_file, args.template_files,
+        render_files_to_dir(values, args.template_files,
                             output_file, **kwargs)
 
 

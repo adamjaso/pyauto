@@ -14,6 +14,7 @@ test_file = os.path.join(output_dir, 'test.yml')
 test1_file = os.path.join(output_dir, 'test1.yml')
 test2_file = os.path.join(output_dir, 'test2.yml')
 values_file = os.path.join(template_example_dir, 'values.yml')
+values = template.build_values([values_file])
 template_files = [test1_template, test2_template]
 
 
@@ -37,7 +38,8 @@ def clear_output_dir():
 
 class TestTemplateRenderFiles(TestCase):
     def test_render_file(self):
-        template.render_files_to_dir(values_file, template_files, output_dir)
+        global values
+        template.render_files_to_dir(values, template_files, output_dir)
         with open(values_file) as f:
             values = yaml.load(f)
         rendered = template.render_file(test1_template, **values).strip()
@@ -46,29 +48,30 @@ class TestTemplateRenderFiles(TestCase):
             self.assertEqual(data, rendered)
 
     def test_render_files(self):
-        template.render_files_to_dir(values_file, template_files, output_dir)
+        template.render_files_to_dir(values, template_files, output_dir)
         output = StringIO()
 
         def write(tfile, data):
             output.write(data)
 
-        template.render_files(values_file, template_files, write)
+        template.render_files(values, template_files, write)
         self.assertEqual(output.getvalue(), concat_tests())
 
     def test_render_files_to_stream(self):
-        template.render_files_to_dir(values_file, template_files, output_dir)
+        template.render_files_to_dir(values, template_files, output_dir)
         output = StringIO()
-        template.render_files_to_stream(values_file, template_files, output)
+        template.render_files_to_stream(values, template_files, output)
         self.assertEqual(output.getvalue(), concat_tests())
 
     def test_render_files_to_file(self):
         clear_output_dir()
-        template.render_files_to_file(values_file, template_files, test_file)
+        template.render_files_to_file(values, template_files, test_file)
         self.assertTrue(os.path.isfile(test_file))
 
     def test_render_files_to_dir(self):
+        global values
         clear_output_dir()
-        template.render_files_to_dir(values_file, template_files, output_dir)
+        template.render_files_to_dir(values, template_files, output_dir)
         self.assertTrue(os.path.isfile(test1_file))
         self.assertTrue(os.path.isfile(test2_file))
 
