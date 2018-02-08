@@ -4,6 +4,17 @@ include:
   - .networking
   - .servers
 
+openvpn-defaults:
+  file.managed:
+  - name: /etc/default/openvpn
+  - user: root
+  - group: root
+  - mode: 600
+  - contents: |
+      AUTOSTART="all"
+      OPTARGS=""
+      OMIT_SENDSIGS=0
+
 openvpn:
   file.directory:
   - name: {{ openvpn_dir }}

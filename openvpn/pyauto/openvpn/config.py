@@ -49,13 +49,13 @@ class Openvpn(config.Config):
 
     def get_server(self, server_id):
         for srv in self.servers:
-            if server_id == srv.id:
+            if server_id == srv.get_id():
                 return srv
         raise Exception('Unknown server: {0}'.format(server_id))
 
     def get_user(self, user_id):
         for usr in self.users:
-            if user_id == usr.id:
+            if user_id == usr.get_id():
                 return usr
         raise Exception('Unknown user: {0}'.format(user_id))
 
@@ -147,16 +147,16 @@ class User(config.Config):
         return {dev.id: dev.get_profile_files() for dev in self.devices}
 
     def get_device(self, name):
-        device_id = '.'.join([self.id, name])
+        device_id = '.'.join([self.get_id(), name])
         for dev in self['devices']:
             if device_id == dev.id:
                 return dev
-        raise Exception('Unknown device for user {0}: {1}'.format(self['id'], device_id))
+        raise Exception('Unknown device for user {0}: {1}'.format(self.get_id(), device_id))
 
 
 class Device(object):
     def __init__(self, user, device_id):
-        self.id = '.'.join([user.id, device_id])
+        self.id = '.'.join([user.get_id(), device_id])
         self.name = ' - '.join([user.name, self.id])
         self.user = user
 
@@ -183,16 +183,16 @@ class Server(config.Config):
     def create_profile(self):
         openvpn = self.config
         self.ca.create_profile(
-            'server', self.id, self.id, openvpn.server_key_size, openvpn.server_num_days)
+            'server', self.get_id(), self.get_id(), openvpn.server_key_size, openvpn.server_num_days)
         return self
 
     def get_user(self, user_id):
-        if user_id not in [u.id for u in self.users]:
-            raise Exception('Unknown server user: {0}-{1}'.format(self['id'], user_id))
+        if user_id not in [u.get_id() for u in self.users]:
+            raise Exception('Unknown server user: {0}-{1}'.format(self.get_id(), user_id))
         return self.config.get_user(user_id)
 
     def get_profile_files(self):
-        return self.ca.get_profile_files(self.id)
+        return self.ca.get_profile_files(self.get_id())
 
     def get_pillar_str(self):
         pillar_vars = self.vpn_profile.get_pillar_vars()
@@ -213,15 +213,25 @@ class Server(config.Config):
     def deploy(self, **kwargs):
         config = self.config.config
         pillar_vars = self.vpn_profile.get_pillar_vars()
-        pillar_str = config.salt.pillar.get_serialized([
-            ('openvpn', lambda f, pillar: f.write(yamlutil.dump_dict(pillar_vars)))
+
+        def write_pillar(f, pillar):
+            if six.PY3:
+                nonlocal pillar_vars
+            pillar_vars = yamlutil.dump_dict(pillar_vars)
+            if six.PY3:
+                pillar_vars = pillar_vars.encode('utf-8')
+            f.write(pillar_vars)
+
+        pillar_str = config.salt_serial.pillar.get_serialized([
+            ('openvpn', write_pillar)
         ])
-        salt_str = config.salt.states.get_serialized()
+        salt_str = config.salt_serial.states.get_serialized()
         user_data = config.local.render_template(
             'digitalocean_init.sh',
             role='openvpn',
             pillar_str=pillar_str,
             salt_str=salt_str,
+            server_name=self.server_name,
         )
         droplet = do_config.Droplet(self.digitalocean, config.digitalocean)
         return droplet.deploy(user_data=user_data)
@@ -238,14 +248,15 @@ class VpnProfile(dict):
         super(VpnProfile, self).__init__()
         self.openvpn = openvpn
         self.is_server = device is None
+        server_id = server.get_id()
         if self.is_server:
-            self.id = server.id
+            self.id = server_id
             self.src = server.get_profile_files()
             self.update(openvpn.get_base_server_conf())
             self.update(server.get('openvpn', {}))
             self['profile'] = 'server'
         else:
-            self.id = '-'.join([server.id, device.id])
+            self.id = '-'.join([server_id, device.id])
             self.src = device.get_profile_files()
             self.update(openvpn.get_base_client_conf())
             self['profile'] = 'client'
@@ -356,7 +367,7 @@ class VpnProfile(dict):
 
     def render_ovpn(self):
         conf_text = self.render()
-        return '\n'.join([
+        return os.linesep.join([
             conf_text, '',
             '<tls-auth>', self.ta_key, '</tls-auth>',
             '<ca>', self.ca_cert, '</ca>',

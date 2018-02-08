@@ -3,16 +3,6 @@
 
 {%- for server in openvpn_servers -%}
 
-{{ openvpn_dir }}/{{ server['conf_filename'] }}:
-  file.managed:
-    - user: root
-    - group: root
-    - mode: 600
-    - contents: |
-        {{ server['conf']|indent(8) }}
-    - require:
-      - file: {{ openvpn_dir }}
-
 {{ openvpn_dir }}/{{ server['key_filename'] }}:
   file.managed:
     - user: root
@@ -55,13 +45,20 @@
     - contents: |
         {{ server['dh_params']|indent(8) }}
 
+{{ openvpn_dir }}/{{ server['conf_filename'] }}:
+  file.managed:
+    - user: root
+    - group: root
+    - mode: 600
+    - contents: |
+        {{ server['conf']|indent(8) }}
+    - require:
+      - file: {{ openvpn_dir }}
+
 openvpn-service-{{ server['id'] }}:
   service.running:
     - name: openvpn@{{ server['id'] }}
     - enable: True
-    - reload: True
-    - watch:
-      - file: /etc/openvpn/{{ server['conf_filename'] }}
     - require:
       - file: /etc/openvpn/{{ server['conf_filename'] }}
 

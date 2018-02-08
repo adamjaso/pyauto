@@ -5,8 +5,18 @@ dnsmasq:
   - restart: True
   - require:
     - file: /etc/dnsmasq.conf
+    - file: /etc/default/dnsmasq
   - watch:
     - file: /etc/dnsmasq.conf
+    - file: /etc/default/dnsmasq
+/etc/default/dnsmasq:
+  file.managed:
+  - user: root
+  - group: root
+  - mode: 600
+  - contents: |
+      ENABLED=1
+      IGNORE_RESOLVCONF=yes
 /etc/dnsmasq.conf:
   file.managed:
   - source: salt://dnsmasq/dnsmasq.conf
