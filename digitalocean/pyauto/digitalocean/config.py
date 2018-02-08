@@ -57,12 +57,6 @@ class Droplet(dict):
         create_opts.update(kwargs)
         create_opts['name'] = self.droplet_name
         create_opts['region'] = self['region']
-        if self.config.user_data_template:
-            create_opts['user_data'] = \
-                self.config.config.local.render_template(
-                    self.config.user_data_template,
-                    **kwargs.get('user_data', '')
-                )
         create_opts['tags'] = [self.droplet_tag]
         return create_opts
 

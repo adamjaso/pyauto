@@ -44,7 +44,8 @@ class Droplet(TestCase):
 
     def test_get_deploy_opts(self):
         d = digitalocean.get_droplet('db-sfo1')
-        options = d.get_deploy_opts(user_data=dict(username='jdoe'))
+        options = d.get_deploy_opts(
+            user_data='echo hello jdoe > jdoe_greeting.txt')
         self.assertDictEqual(options, {
             'size': '512mb',
             'image': 'ubuntu-16-04-x64',

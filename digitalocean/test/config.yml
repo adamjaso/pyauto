@@ -2,7 +2,6 @@ local:
   workspace_dir: workspace
   template_dir: templates
 digitalocean:
-  user_data_template: user_data.j2
   token: xxxxxx
   droplets:
   - id: db-sfo1
