@@ -1,0 +1,14 @@
+local:
+  workspace_dir: workspace
+filecache:
+  directory: cache
+  key_data:
+  - id: abc
+    data: abc
+  - id: gzipped
+    data: abcde
+  - id: zipfile
+    data: edcba
+task_modules:
+- pyauto.local.commands
+- pyauto.filecache.commands
