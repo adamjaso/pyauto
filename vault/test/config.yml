@@ -1,0 +1,22 @@
+local:
+  workspace_dir: workspace
+  template_dir: templates
+
+vault:
+  directory: vault
+  endpoints:
+  - id: prod
+    base_url: https://localhost
+    secret_path: secret
+    role_id: ''
+    secret_id: ''
+  paths:
+  - id: prod_myenv1
+    path: prod/myenv1
+    endpoint: prod
+    filename: prod/prod_myenv1.yml
+
+task_modules:
+- pyauto.vault.commands
+- pyauto.local.commands
+tasks: {}
