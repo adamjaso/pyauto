@@ -35,6 +35,10 @@ class Vault(config.Config):
     def read_path(self, resource):
         return self.get_path(resource).read()
 
+    def read_path_key(self, resource, key, default=None):
+        value = self.read_path(resource)
+        return value['data'].get(key, default)
+
 
 class Endpoint(config.Config):
     client = None

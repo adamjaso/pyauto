@@ -1,4 +1,4 @@
-.PHONY: py3 py2 deps3 deps2 deps3-dev deps2-dev test3 test2 test deps
+.PHONY: py3 py2 deps3 deps2 deps3-dev deps2-dev test3 test2 test deps deploy
 
 py3:
 	[[ ! -d env3 ]] && virtualenv -p python3 env3 || :
@@ -27,3 +27,6 @@ test2: deps2-dev
 deps: deps3-dev deps2-dev
 
 test: test3 test2
+
+deploy: test
+	python setup.py sdist upload -r https://upload.pypi.org/legacy/
