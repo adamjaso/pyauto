@@ -153,6 +153,13 @@ class RSAKey(BaseTestCase):
         self.assertNotEqual(key.pem_str.strip(), rsa_example.strip())
         self.assertIn('ENCRYPTED', key.pem_str)
 
+    def test_public(self):
+        key = pkiutil.RSAKey()\
+                .set_file(rsa_enc_saved_example_file)\
+                .load_pem(rsa_example)\
+                .set_passphrase(rsa_passphrase)
+        self.assertIsInstance(key.public, pkiutil.RSAPubKey)
+
 
 class RSAPubKey(BaseTestCase):
     def test_rsa_pub_save(self):

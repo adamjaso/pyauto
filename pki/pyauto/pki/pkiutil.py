@@ -240,6 +240,12 @@ class RSAKey(object):
         )
 
     @property
+    def public(self):
+        pub = RSAPubKey()
+        pub._rsa = self._rsa.public_key()
+        return pub
+
+    @property
     def pem(self):
         if self._rsa is None:
             raise Exception('No key is set')
