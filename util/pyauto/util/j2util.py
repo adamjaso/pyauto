@@ -6,8 +6,7 @@ from jinja2 import FileSystemLoader
 from .yamlutil import dump_dict
 
 
-def get_template_renderer(templates_dirname):
-    dirname = templates_dirname
+def build_env(dirname):
     env = Environment(
         loader=FileSystemLoader(dirname),
         trim_blocks=True,
@@ -25,11 +24,16 @@ def get_template_renderer(templates_dirname):
         ]).strip()
 
     env.filters['to_yaml'] = to_yaml
+    return env
+
+
+def get_template_renderer(templates_dirname):
+    env = build_env(templates_dirname)
 
     def _render(filename, **kwargs):
         cwd = os.getcwd()
-        if filename.startswith(dirname):
-            filename = filename.replace(dirname, '')
+        if filename.startswith(templates_dirname):
+            filename = filename.replace(templates_dirname, '')
         filename = re.sub('^/', '', filename)
         kwargs['CURRENT_DIRECTORY'] = cwd
         return env.get_template(filename).render(**kwargs)
