@@ -48,8 +48,10 @@ class Local(TestCase):
         local.copytree('project', 'abc')
         tree_source = os.path.join(dirname, 'sources/tree1/test.txt')
         tree_dest = os.path.join(dirname, 'workspace/tree1/test.txt')
+        ignore_dest = os.path.join(dirname, 'workspace/tree1/ignore.txt')
         self.assertTrue(os.path.isfile(tree_source))
         self.assertTrue(os.path.isfile(tree_dest))
+        self.assertFalse(os.path.isfile(ignore_dest))
 
     def test_rmtree(self):
         self.test_copytree()

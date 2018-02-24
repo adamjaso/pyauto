@@ -58,9 +58,15 @@ class Local(config.Config):
         raise Exception('unknown local.source: {0}'.format(id))
 
     def copytree(self, src_id, dst_id, **kwargs):
-        src = self.get_source(src_id).get_path()
-        dst = self.get_destination(dst_id).get_path()
-        return strutil.copytree(src, dst, **kwargs)
+        src = self.get_source(src_id)
+        src_dir = src.get_path()
+        dst_dir = self.get_destination(dst_id).get_path()
+        if 'ignore' not in kwargs:
+            kwargs['ignore'] = []
+        kwargs['ignore'].append('.git')
+        kwargs['ignore'].extend(list(src.get('ignore', [])))
+        kwargs['ignore'] = shutil.ignore_patterns(*kwargs['ignore'])
+        return strutil.copytree(src_dir, dst_dir, **kwargs)
 
     def rmtree(self, dst_id):
         return self.get_destination(dst_id).rmtree()

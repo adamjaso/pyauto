@@ -12,6 +12,8 @@ local:
   - tag: project
     name: Project
     directory: sources/tree1
+    ignore:
+    - ignore.txt
   destinations:
   - tag: abc
     name: ABC
