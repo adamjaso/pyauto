@@ -36,6 +36,12 @@ class Local(config.Config):
     def get_template_file(self, *fn):
         return os.path.join(self['template_dir'], *fn)
 
+    def get_source_path(self, source_id, *path):
+        return self.get_source(source_id).get_path(*path)
+
+    def get_destination_path(self, destination_id, *path):
+        return self.get_destination(destination_id).get_path(*path)
+
     def get_workspace_path(self, *fn):
         return os.path.join(self['workspace_dir'], *fn)
 

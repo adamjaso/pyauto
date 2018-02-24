@@ -20,7 +20,7 @@ def tearDownModule():
     shutil.rmtree(local.workspace_dir)
 
 
-class TestConfigLocal(TestCase):
+class Local(TestCase):
     def test_init_workspace(self):
         local.init_workspace()
 
@@ -57,13 +57,22 @@ class TestConfigLocal(TestCase):
         tree_dest = os.path.join(dirname, 'workspace/tree1/test.txt')
         self.assertFalse(os.path.isfile(tree_dest))
 
-class TestConfigLocalSource(TestCase):
+    def test_get_source_path(self):
+        filename = local.get_source_path('project', 'test.txt')
+        self.assertTrue(filename.endswith('/tree1/test.txt'))
+
+    def test_get_destination_path(self):
+        filename = local.get_destination_path('abc', 'test.txt')
+        self.assertTrue(filename.endswith('/tree1/test.txt'))
+
+
+class LocalSource(TestCase):
     def test_get_path(self):
         tree_source = os.path.join(dirname, 'sources/tree1')
         self.assertEqual(tree_source, local.get_source('project').get_path())
 
 
-class TestConfigLocalDestination(TestCase):
+class LocalDestination(TestCase):
     def setUp(self):
         self.dest = local.get_destination('abc')
         self.cleanup_template_destinations()
@@ -101,7 +110,7 @@ class TestConfigLocalDestination(TestCase):
             self.assertTrue(os.path.isfile(fn))
 
 
-class TestConfigLocalTemplate(TestCase):
+class LocalTemplate(TestCase):
     def test_init(self):
         template = local.get_template('project_config')
         self.assertIsInstance(template, config.Template)
@@ -148,7 +157,7 @@ class TestConfigLocalTemplate(TestCase):
         self.assertDictEqual(data, expected)
 
 
-class TestConfigLocalVariableList(TestCase):
+class LocalVariableList(TestCase):
     def test_init(self):
         dest = local.get_destination('abc')
         template = dest.get_template('project_config')
@@ -179,7 +188,7 @@ class TestConfigLocalVariableList(TestCase):
         self.assertDictEqual(data, expected)
 
 
-class TestConfigLocalVariable(TestCase):
+class LocalVariable(TestCase):
     def test_get_env(self):
         dest = local.get_destination('abc')
         template = dest.get_template('project_config')
