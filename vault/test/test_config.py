@@ -3,6 +3,7 @@ from unittest import TestCase
 from pyauto.core import deploy
 from pyauto.core import config
 from pyauto.vault import config as vault_config
+config.set_id_key('id')
 
 dirname = os.path.dirname(os.path.abspath(__file__))
 conf = deploy.Command(os.path.join(dirname, 'config.yml'), []).config

@@ -4,7 +4,6 @@ import six
 import hvac
 from pyauto.core import config
 from pyauto.util import yamlutil
-config.set_id_key('id')
 
 
 class Vault(config.Config):
