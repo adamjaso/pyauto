@@ -16,6 +16,6 @@ class Function(object):
 
     def run(self, **kwargs):
         value = self.func(*self.args, **kwargs)
-        if six.PY3 and isinstance(value, six.binary_type):
+        if isinstance(value, six.binary_type):
             value = value.decode('utf-8')
         return value

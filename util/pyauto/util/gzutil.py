@@ -4,8 +4,11 @@ from io import BytesIO
 
 
 def compress(data_str, stream, encoding=None):
-    if isinstance(data_str, six.string_types) and six.PY3:
-        data_str = six.binary_type(data_str, encoding or 'utf-8')
+    if isinstance(data_str, six.string_types):
+        if six.PY3:
+            data_str = six.binary_type(data_str, encoding or 'utf-8')
+        else:
+            data_str = six.binary_type(data_str)
     res_buf = BytesIO(data_str)
     size = compress_stream(res_buf, stream)
     return dict(

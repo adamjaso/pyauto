@@ -1,6 +1,6 @@
 from unittest import TestCase
 import re
-from pyauto.core import strutil
+from pyauto.util import strutil
 
 
 class TestRandStr(TestCase):

@@ -1,1 +1,2 @@
 nose2
+pyauto.core>=0.0.6a2

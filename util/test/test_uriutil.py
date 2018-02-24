@@ -1,5 +1,5 @@
 from unittest import TestCase
-from pyauto.core import uriutil
+from pyauto.util import uriutil
 from collections import OrderedDict
 
 test_uri = 'http://a:b@localhost:5000/abc?def=123#ghi567'

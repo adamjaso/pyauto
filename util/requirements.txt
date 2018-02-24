@@ -1,4 +1,5 @@
 six
+pyyaml
 jinja2
 netaddr
 requests

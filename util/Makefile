@@ -19,10 +19,10 @@ deps2-dev: deps2
 	. env/bin/activate && pip install -r requirements-dev.txt ; deactivate
 
 test3: deps3-dev
-	. env3/bin/activate && nose2 -v ; deactivate
+	. env3/bin/activate && PYTHONPATH=../core nose2 -v ; deactivate
 
 test2: deps2-dev
-	. env/bin/activate && nose2 -v ; deactivate
+	. env/bin/activate && PYTHONPATH=../core nose2 -v ; deactivate
 
 deps: deps3-dev deps2-dev
 

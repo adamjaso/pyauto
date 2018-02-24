@@ -12,7 +12,10 @@ def myfunc_args(a, b):
 
 
 def myfunc_bytearray():
-    return six.binary_type('abc', 'utf-8')
+    if six.PY3:
+        return six.binary_type('abc', 'utf-8')
+    else:
+        return six.binary_type('abc')
 
 
 class Function(TestCase):
