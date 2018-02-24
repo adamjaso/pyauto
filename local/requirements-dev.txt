@@ -1,2 +1,1 @@
--e ../core
--e ../util
+nose2

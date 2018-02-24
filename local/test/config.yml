@@ -1,13 +1,42 @@
 local:
   workspace_dir: workspace
   template_dir: templates
+  templates:
+  - tag: project_config
+    template: example.j2
+    filename: example.yml
+    variables:
+    - env: PWD
+      name: id
   sources:
-  - id: project
+  - tag: project
     name: Project
     directory: sources/tree1
   destinations:
-  - id: abc
+  - tag: abc
     name: ABC
     source: project
     directory: tree1
-
+    templates:
+    - tag: project_config
+      template: project_config
+      filename: config.region.yml
+      variables:
+      - env: HOME
+        name: tag
+      - env: PWD
+        name: name
+    - tag: project_config_no_filename
+      template: project_config
+      variables:
+      - env: HOME
+      - env: PWD
+      - resource: local/get_template_file,file.txt
+        name: randomfile
+      - file: sources/tree1/test.txt
+        name: testtxt
+      - file: sources/tree1/test.txt
+        parse: yaml
+      - function: test_config.get_test_value
+        name: value
+tasks: {}

@@ -1,4 +1,4 @@
-import os, shutil
+import os, shutil, six
 from unittest import TestCase
 from pyauto.core import deploy
 from pyauto.local import config
@@ -6,6 +6,10 @@ from pyauto.local import config
 dirname = os.path.dirname(os.path.abspath(__file__))
 local = deploy.Command(os.path.join(dirname, 'config.yml'), [])\
     .config.local
+
+
+def get_test_value():
+    return 'foo'
 
 
 def setUpModule():
@@ -33,12 +37,12 @@ class TestConfigLocal(TestCase):
     def test_get_destination(self):
         dst = local.get_destination('abc')
         self.assertIsInstance(dst, config.Destination)
-        self.assertEqual(dst.id, 'abc')
+        self.assertEqual(dst.get_id(), 'abc')
 
     def test_get_source(self):
         src = local.get_source('project')
         self.assertIsInstance(src, config.Source)
-        self.assertEqual(src.id, 'project')
+        self.assertEqual(src.get_id(), 'project')
 
     def test_copytree(self):
         local.copytree('project', 'abc')
@@ -60,19 +64,153 @@ class TestConfigLocalSource(TestCase):
 
 
 class TestConfigLocalDestination(TestCase):
+    def setUp(self):
+        self.dest = local.get_destination('abc')
+        self.cleanup_template_destinations()
+
+    def tearDown(self):
+        self.cleanup_template_destinations()
+
+    def cleanup_template_destinations(self):
+        filenames = self.dest.get_template_destinations()
+        for fn in filenames:
+            if os.path.isfile(fn):
+                os.remove(fn)
+
     def test_get_path(self):
         tree_dest = os.path.join(dirname, 'workspace/tree1')
         self.assertEqual(tree_dest, local.get_destination('abc').get_path())
 
     def test_copytree(self):
-        local.get_destination('abc').copytree()
+        self.dest.copytree()
         tree_dest = os.path.join(dirname, 'workspace/tree1/test.txt')
         self.assertTrue(os.path.isfile(tree_dest))
 
-    def test_copytree(self):
-        dest = local.get_destination('abc')
+    def test_rmtree(self):
+        dest = self.dest
         dest.copytree()
         dest.rmtree()
         tree_dest = os.path.join(dirname, 'workspace/tree1')
         self.assertFalse(os.path.isdir(tree_dest))
 
+    def test_render_templates(self):
+        dest = self.dest
+        dest.render_templates()
+        filenames = dest.get_template_destinations()
+        for fn in filenames:
+            self.assertTrue(os.path.isfile(fn))
+
+
+class TestConfigLocalTemplate(TestCase):
+    def test_init(self):
+        template = local.get_template('project_config')
+        self.assertIsInstance(template, config.Template)
+        self.assertIsInstance(template.variables, config.VariableList)
+
+    def test_destination_filename(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config')
+        self.assertEqual(template.destination_filename, 'config.region.yml')
+        template = dest.get_template('project_config_no_filename')
+        self.assertEqual(template.destination_filename, 'example.yml')
+
+    def test_template_filename(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config')
+        filename = template.template_filename
+        self.assertEqual(filename, 'example.j2')
+        template = local.get_template('project_config')
+        filename = template.template_filename
+        self.assertEqual(filename, 'example.j2')
+
+    def test_render_template(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config')
+        data = template.render_template()
+        expected = local.render_template(
+            'example.j2',
+            tag=os.getenv('HOME'),
+            name=os.getenv('PWD'))
+        self.assertEqual(data, expected)
+
+    def test_get_context(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config')
+        data = template.get_context()
+        expected = {'tag': os.getenv('HOME'),
+                    'name': os.getenv('PWD'),
+                    'id': os.getenv('PWD'),}
+        self.assertDictEqual(data, expected)
+
+        template = local.get_template('project_config')
+        data = template.get_context()
+        expected = {'id': os.getenv('PWD')}
+        self.assertDictEqual(data, expected)
+
+
+class TestConfigLocalVariableList(TestCase):
+    def test_init(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config')
+        self.assertIsInstance(len(template.variables), int)
+
+    def test_get_context(self):
+        template = local.get_template('project_config')
+
+        data = template.variables.get_context({'id': 123})
+        expected = {'id': 123}
+        self.assertDictEqual(data, expected)
+
+        data = template.variables.get_context({})
+        expected = {'id': os.getenv('PWD')}
+        self.assertDictEqual(data, expected)
+
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config')
+        data = template.variables.get_context({'id': 123})
+        expected = {'id': 123,
+                    'tag': os.getenv('HOME'),
+                    'name': os.getenv('PWD')}
+        self.assertDictEqual(data, expected)
+
+        expected = {'tag': os.getenv('HOME'),
+                    'name': os.getenv('PWD')}
+        data = template.variables.get_context({})
+        self.assertDictEqual(data, expected)
+
+
+class TestConfigLocalVariable(TestCase):
+    def test_get_env(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config')
+        for var in template.variables:
+            if 'env' in var:
+                self.assertIsInstance(var.get_env(), six.string_types)
+
+    def test_get_resource(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config_no_filename')
+        for var in template.variables:
+            if 'resource' in var:
+                self.assertIsInstance(var.get_resource(), six.string_types)
+        # TODO: test local.get_template().variables
+
+    def test_get_file(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config_no_filename')
+        for var in template.variables:
+            if 'file' in var:
+                val = var.get_file()
+                if isinstance(val, six.string_types):
+                    self.assertEqual(val, 'foo: bar\n')
+                elif isinstance(val, dict):
+                    self.assertDictEqual(val, {'foo': 'bar'})
+        # TODO: test local.get_template().variables
+
+    def test_get_function(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config_no_filename')
+        for var in template.variables:
+            if 'function' in var:
+                data = var.get_function()
+                self.assertEqual(data, 'foo')
