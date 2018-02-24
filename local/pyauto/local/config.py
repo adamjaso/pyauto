@@ -165,7 +165,7 @@ class VariableList(object):
     def get_context(self, context):
         for var in self:
             value = var.get_value()
-            if not isinstance(value, (dict, OrderedDict)):
+            if not isinstance(value, (dict, OrderedDict, config.Config)):
                 raise Exception('var must resolve to a dict: {0}'
                                 .format(value))
             for k, v in value.items():
