@@ -41,4 +41,6 @@ local:
         parse: yaml
       - function: test_config.get_test_value
         name: value
+task_modules:
+- pyauto.local.commands
 tasks: {}

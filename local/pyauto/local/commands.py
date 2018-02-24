@@ -23,3 +23,25 @@ def dst_copytree(config, dst_id):
 
 def dst_rmtree(config, dst_id):
     return config.local.get_destination(dst_id).rmtree()
+
+
+def dst_get_template_destinations(config, dst_id):
+    return config.local.get_destination(dst_id).get_template_destinations()
+
+
+def dst_render_templates(config, dst_id):
+    return config.local.get_destination(dst_id).render_templates()
+
+
+def dst_render_template(config, dst_id, template_id):
+    return config.local.get_destination(dst_id)\
+                       .get_template(template_id).render_template()
+
+
+def dst_get_context(config, dst_id, template_id):
+    return config.local.get_destination(dst_id)\
+                       .get_template(template_id).get_context()
+
+
+def template_get_context(config, template_id):
+    return config.local.get_template(template_id).get_context()
