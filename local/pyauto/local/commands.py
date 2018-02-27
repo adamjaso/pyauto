@@ -1,3 +1,4 @@
+import json
 import yaml
 from . import config
 
@@ -39,9 +40,11 @@ def dst_render_template(config, dst_id, template_id):
 
 
 def dst_get_context(config, dst_id, template_id):
-    return config.local.get_destination(dst_id)\
+    data = config.local.get_destination(dst_id)\
                        .get_template(template_id).get_context()
+    return json.dumps(data, indent=2)
 
 
 def template_get_context(config, template_id):
-    return config.local.get_template(template_id).get_context()
+    data = config.local.get_template(template_id).get_context()
+    return json.dumps(data, indent=2)

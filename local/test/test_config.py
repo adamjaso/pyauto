@@ -1,6 +1,6 @@
 import os, shutil, six
 from unittest import TestCase
-from pyauto.core import deploy
+from pyauto.core import deploy, config as core_config
 from pyauto.local import config
 
 dirname = os.path.dirname(os.path.abspath(__file__))
@@ -203,7 +203,11 @@ class LocalVariable(TestCase):
         template = dest.get_template('project_config_no_filename')
         for var in template.variables:
             if 'resource' in var:
-                self.assertIsInstance(var.get_resource(), six.string_types)
+                res = var.get_resource()
+                if isinstance(res, core_config.Config):
+                    self.assertIsInstance(res, core_config.Config)
+                else:
+                    self.assertIsInstance(res, six.string_types)
         # TODO: test local.get_template().variables
 
     def test_get_file(self):
@@ -225,3 +229,14 @@ class LocalVariable(TestCase):
             if 'function' in var:
                 data = var.get_function()
                 self.assertEqual(data, 'foo')
+
+    def test_get_value(self):
+       dest = local.get_destination('abc')
+       template = dest.get_template('project_config_no_filename')
+       for var in template.variables:
+           if 'resource' in var and 'select' in var:
+               data = var.get_value()
+               self.assertDictEqual(data, {
+                   'abc_filename': 'config.region.yml'
+               })
+

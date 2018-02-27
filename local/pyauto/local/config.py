@@ -1,4 +1,4 @@
-import os, shutil
+import os, shutil, jmespath
 from collections import OrderedDict
 from pyauto.core import config
 from pyauto.util import strutil, funcutil, yamlutil
@@ -197,12 +197,13 @@ class Variable(config.Config):
         elif self.function:
             value = self.get_function()
         else:
-            key = self._dict.keys()[0]
-            if not self.name:
-                self['name'] = key
-            value = self[key]
-        if value is None and self.default:
-            value = self.default
+            raise Exception('unknown variable type: {0}'.format(self))
+        if value is None:
+            if self.default:
+                value = self.default
+            elif not self.optional:
+                raise Exception('unable to get a value for variable: {0}'
+                                .format(self))
         if self.parse:
             if 'json' == self.parse:
                 value = json.loads(value)
@@ -210,6 +211,9 @@ class Variable(config.Config):
                 value = yamlutil.load_dict(value)
             else:
                 raise Exception('unknown parse type: {0}'.format(self.parse))
+        if isinstance(value, (dict, OrderedDict, config.Config)) and \
+                self.select:
+            value = jmespath.search(self.select, value)
         if self.name:
             return {self.name: value}
         else:

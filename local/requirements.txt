@@ -1,3 +1,4 @@
 PyYAML
-pyauto.core>=0.0.6a2
-pyauto.util>=0.0.3a1
+jmespath
+pyauto.core>=0.0.6
+pyauto.util>=0.0.3a3
