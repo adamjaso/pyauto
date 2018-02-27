@@ -88,6 +88,18 @@ class Config(object):
     def __contains__(self, item):
         return item in self._dict
 
+    def __len__(self):
+        return len(self._dict)
+
+    def __iter__(self):
+        return self._dict.keys()
+
+    def keys(self):
+        return self._dict.keys()
+
+    def items(self):
+        return self._dict.items()
+
     def get(self, item, default=None):
         return self.__getitem__(item, default)
 
