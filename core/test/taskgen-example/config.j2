@@ -1,0 +1,5 @@
+apps:
+{{ apps|to_yaml }}
+
+tasks:
+  {{ all_apps_in_all_regions|generate_tasks(apps=apps)|to_yaml(2) }}

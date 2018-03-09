@@ -1,0 +1,129 @@
+apps:
+- tag: a1
+- tag: a2
+
+tasks:
+  d1_a1_clone:
+  - remove_app,d1_a1
+  - copy_app,d1_a1
+  d1_a2_clone:
+  - remove_app,d1_a2
+  - copy_app,d1_a2
+  d2_a1_clone:
+  - remove_app,d2_a1
+  - copy_app,d2_a1
+  d2_a2_clone:
+  - remove_app,d2_a2
+  - copy_app,d2_a2
+  d1_a1_generate:
+  - render_templates,d1_a1
+  d1_a2_generate:
+  - render_templates,d1_a2
+  d2_a1_generate:
+  - render_templates,d2_a1
+  d2_a2_generate:
+  - render_templates,d2_a2
+  d1_a1_deploy_app:
+  - deploy_app,d1_a1
+  d1_a2_deploy_app:
+  - deploy_app,d1_a2
+  d2_a1_deploy_app:
+  - deploy_app,d2_a1
+  d2_a2_deploy_app:
+  - deploy_app,d2_a2
+  d1_a1_wait_app:
+  - wait_app,d1_a1
+  d1_a2_wait_app:
+  - wait_app,d1_a2
+  d2_a1_wait_app:
+  - wait_app,d2_a1
+  d2_a2_wait_app:
+  - wait_app,d2_a2
+  d1_clone:
+  - d1_a1_clone
+  - d1_a2_clone
+  d2_clone:
+  - d2_a1_clone
+  - d2_a2_clone
+  d1_generate:
+  - d1_a1_generate
+  - d1_a2_generate
+  d2_generate:
+  - d2_a1_generate
+  - d2_a2_generate
+  d1_deploy_app:
+  - d1_a1_deploy_app
+  - d1_a2_deploy_app
+  d2_deploy_app:
+  - d2_a1_deploy_app
+  - d2_a2_deploy_app
+  d1_wait_app:
+  - d1_a1_wait_app
+  - d1_a2_wait_app
+  d2_wait_app:
+  - d2_a1_wait_app
+  - d2_a2_wait_app
+  a1_clone:
+  - d1_a1_clone
+  - d2_a1_clone
+  a2_clone:
+  - d1_a2_clone
+  - d2_a2_clone
+  a1_generate:
+  - d1_a1_generate
+  - d2_a1_generate
+  a2_generate:
+  - d1_a2_generate
+  - d2_a2_generate
+  a1_deploy_app:
+  - d1_a1_deploy_app
+  - d2_a1_deploy_app
+  a2_deploy_app:
+  - d1_a2_deploy_app
+  - d2_a2_deploy_app
+  a1_wait_app:
+  - d1_a1_wait_app
+  - d2_a1_wait_app
+  a2_wait_app:
+  - d1_a2_wait_app
+  - d2_a2_wait_app
+  d1_deploy:
+  - d1_clone
+  - d1_generate
+  - d1_deploy_app
+  - d1_wait_app
+  d2_deploy:
+  - d2_clone
+  - d2_generate
+  - d2_deploy_app
+  - d2_wait_app
+  a1_deploy:
+  - a1_clone
+  - a1_generate
+  - a1_deploy_app
+  - a1_wait_app
+  a2_deploy:
+  - a2_clone
+  - a2_generate
+  - a2_deploy_app
+  - a2_wait_app
+  clone:
+  - d1_a1_clone
+  - d1_a2_clone
+  - d2_a1_clone
+  - d2_a2_clone
+  generate:
+  - d1_a1_generate
+  - d1_a2_generate
+  - d2_a1_generate
+  - d2_a2_generate
+  deploy_app:
+  - d1_a1_deploy_app
+  - d1_a2_deploy_app
+  - d2_a1_deploy_app
+  - d2_a2_deploy_app
+  wait_app:
+  - d1_a1_wait_app
+  - d1_a2_wait_app
+  - d2_a1_wait_app
+  - d2_a2_wait_app

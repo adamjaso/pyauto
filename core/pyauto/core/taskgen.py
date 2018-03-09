@@ -10,7 +10,7 @@ class TaskGenerator(object):
     columns = None
     foreach = None
     foreach_items = None
-    foreach_context = None
+    foreach_contexts = None
     foreach_product = None
 
     def __init__(self, config, parent):
@@ -79,7 +79,7 @@ class TaskTemplate(object):
             self.name = config['name']
             self.subtasks = config['subtasks']
         else:
-            self.name = config.keys()[0]
+            self.name = next(iter(config.keys()))
             self.subtasks = config[self.name]
         self.render_name = env.from_string(self.name).render
         if isinstance(self.subtasks, six.string_types):

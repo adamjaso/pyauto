@@ -1,0 +1,59 @@
+all_apps_in_all_regions:
+  columns: [dep, app]
+  foreach: [[d1, d2],
+            [a1, a2]]
+  list_templates:
+    clone:
+    - remove_app,{{ dep }}_{{ app }}
+    - copy_app,{{ dep }}_{{ app }}
+    generate:
+    - render_templates,{{ dep }}_{{ app }}
+    deploy_app:
+    - deploy_app,{{ dep }}_{{ app }}
+    wait_app:
+    - wait_app,{{ dep }}_{{ app }}
+
+    dep_app_clone:
+    - '{{ dep }}_{{ app }}_clone'
+    dep_app_generate:
+    - '{{ dep }}_{{ app }}_generate'
+    dep_app_deploy_app:
+    - '{{ dep }}_{{ app }}_deploy_app'
+    dep_app_wait_app:
+    - '{{ dep }}_{{ app }}_wait_app'
+
+    dep_deploy:
+    - '{{ dep }}_clone'
+    - '{{ dep }}_generate'
+    - '{{ dep }}_deploy_app'
+    - '{{ dep }}_wait_app'
+
+    app_deploy:
+    - '{{ app }}_clone'
+    - '{{ app }}_generate'
+    - '{{ app }}_deploy_app'
+    - '{{ app }}_wait_app'
+
+  task_templates:
+  - '{{ dep }}_{{ app }}_clone': clone
+  - '{{ dep }}_{{ app }}_generate': generate
+  - '{{ dep }}_{{ app }}_deploy_app': deploy_app
+  - '{{ dep }}_{{ app }}_wait_app': wait_app
+
+  - '{{ dep }}_clone': dep_app_clone
+  - '{{ dep }}_generate': dep_app_generate
+  - '{{ dep }}_deploy_app': dep_app_deploy_app
+  - '{{ dep }}_wait_app': dep_app_wait_app
+
+  - '{{ app }}_clone': dep_app_clone
+  - '{{ app }}_generate': dep_app_generate
+  - '{{ app }}_deploy_app': dep_app_deploy_app
+  - '{{ app }}_wait_app': dep_app_wait_app
+
+  - {name: '{{ dep }}_deploy', column: dep, subtasks: dep_deploy}
+  - {name: '{{ app }}_deploy', column: app, subtasks: app_deploy}
+
+  - clone: dep_app_clone
+  - generate: dep_app_generate
+  - deploy_app: dep_app_deploy_app
+  - wait_app: dep_app_wait_app

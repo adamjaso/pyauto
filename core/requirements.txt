@@ -1,4 +1,4 @@
 PyYAML
 six
 jinja2
-pyauto.util
+pyauto.util>=0.0.3a3
