@@ -2,10 +2,26 @@ import re
 import os
 import sys
 from pyauto.util import yamlutil
-from pyauto.util.j2util import get_template_renderer
+from pyauto.util.j2util import build_env
+from pyauto.core import taskgen
 from collections import OrderedDict
 
 _renderers = {}
+
+
+def get_template_renderer(templates_dirname):
+    env = build_env(templates_dirname)
+    env.filters['generate_tasks'] = taskgen.generate_tasks
+
+    def _render(filename_, **kwargs):
+        if filename_.startswith(templates_dirname):
+            filename_ = filename_.replace(templates_dirname, '')
+        filename_ = re.sub('^/', '', filename_)
+        if 'CURRENT_DIRECTORY' not in kwargs:
+            kwargs['CURRENT_DIRECTORY'] = os.getcwd()
+        return env.get_template(filename_).render(**kwargs)
+
+    return _render
 
 
 def render_file(filename, **kwargs):
