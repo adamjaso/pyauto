@@ -1,5 +1,8 @@
+deployments:
+{{ deployments|to_yaml }}
+
 apps:
 {{ apps|to_yaml }}
 
 tasks:
-  {{ all_apps_in_all_regions|generate_tasks(apps=apps)|to_yaml(2) }}
+  {{ tasks|generate_tasks(apps=apps, deployments=deployments)|to_yaml(2) }}
