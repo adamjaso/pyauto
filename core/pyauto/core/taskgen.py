@@ -1,19 +1,100 @@
-import six
 import itertools
+import six
+from copy import copy
 from jinja2 import Environment
 from collections import OrderedDict
+from pyauto.util import yamlutil
 
 
-class TaskTemplatesList(object):
-    def __init__(self, tasks, main_context):
-        self.tasks = [
-            TaskTemplates(task, main_context)
-            for task in tasks
-        ]
+class Definitions(object):
+    def __init__(self, config):
+        self.targets = Targets(config['targets'])
+        self.tasks = Tasks(config['tasks'], self.targets)
+
+
+class Targets(object):
+    def __init__(self, config):
+        self.targets = OrderedDict()
+        for name, target in config.items():
+            self.targets[name] = Target(copy(target), self)
+            only_target = copy(target)
+            if 'depends' in only_target:
+                del only_target['depends']
+            self.targets[name + '.only'] = Target(only_target, self)
+
+    def get_target(self, name):
+        return self.targets[name]
+
+
+class Target(object):
+    def __init__(self, config, parent):
+        self.config = parent
+        self.name = config['name']
+        self.depends = config.get('depends', None)
+        self.map = config.get('map', None)
+        self.list = config.get('list', None)
+
+    def get_parent(self):
+        return self.config.get_target(self.depends)
+
+    def get_ancestry(self, result=None):
+        if result is None:
+            result = []
+        result.insert(0, self)
+        if self.depends:
+            return self.get_parent().get_ancestry(result)
+        else:
+            return result
+
+    def get_contexts(self):
+        names = []
+        ancestry = self.get_ancestry()
+        product_lists = []
+        for anc in ancestry:
+            if isinstance(anc.name, list):
+                names.extend(anc.name)
+            else:
+                names.append(anc.name)
+            if anc.list:
+                continue
+            elif anc.map:
+                list_ = []
+                for i, item in enumerate(anc.map):
+                    item_product = itertools.product(list(item.keys()),
+                                                     list(item.values())[0])
+                    item_product = [list(row) for row in item_product]
+                    list_.extend(item_product)
+                anc.list = list_
+
+        rows_product = itertools.product(*[anc.list for anc in ancestry])
+        rows = [list(row) for row in rows_product]
+        for i, row in enumerate(rows):
+            revised = []
+            for cell in row:
+                if isinstance(cell, list):
+                    revised.extend(cell)
+                else:
+                    revised.append(cell)
+            if len(names) != len(revised):
+                raise Exception('name is misconfigured: {0} != {1}'
+                                .format(len(names), len(revised)))
+            rows[i] = dict(zip(names, revised))
+        return rows
+
+
+class Tasks(object):
+    def __init__(self, config, targets):
+        self.groups = OrderedDict([
+            (group_id, TaskTemplates(val, targets))
+            for group_id, val in config.items()
+        ])
+
+    def get_templates(self, name):
+        return self.groups[name]
 
     def render(self):
         tasks = OrderedDict()
-        for task in self.tasks:
+        for group_id, task in self.groups.items():
             exported = task.render()
             for k in exported:
                 if k in tasks:
@@ -23,24 +104,72 @@ class TaskTemplatesList(object):
 
 
 class TaskTemplates(object):
-    def __init__(self, config, main_context):
-        self.list_templates = {
-            key: ListTemplate(task_list)
-            for key, task_list in config.get('list_templates', {}).items()
-        }
-        self.task_templates = [
-            TaskTemplate(task_template, self, main_context)
-            for task_template in config.get('task_templates', [])
-        ]
+    def __init__(self, config, targets):
+        self.entries = []
+        for target_id, entry in config.items():
+            if '__plain__' == target_id:
+                self.entries.append(entry)
+            else:
+                target = targets.get_target(target_id)
+                self.entries.append(TaskTemplate(entry, target.get_contexts()))
 
     def render(self):
         tasks = OrderedDict()
-        for task in self.task_templates:
+        for task in self.entries:
+            if isinstance(task, list):
+                for entry in task:
+                    for k in entry:
+                        if k in tasks:
+                            raise Exception('duplicate task key found: {0}'
+                                            .format(k))
+                        tasks[k] = entry[k]
+            else:
+                exported = task.render()
+                for k in exported:
+                    if k in tasks:
+                        raise Exception('duplicate task key found: {0}'
+                                        .format(k))
+                    tasks[k] = exported[k]
+        return tasks
+
+
+class TaskTemplate(object):
+    def __init__(self, config, contexts):
+        self.entries = [
+            TaskTemplateEntry(template, contexts)
+            for template in config]
+
+    def render(self):
+        tasks = OrderedDict()
+        for task in self.entries:
             exported = task.render()
             for k in exported:
                 if k in tasks:
                     raise Exception('duplicate task key found: {0}'.format(k))
             tasks.update(exported)
+        return tasks
+
+
+class TaskTemplateEntry(object):
+    def __init__(self, config, contexts):
+        self.contexts = contexts
+        if 'name' in config:
+            self.name = config['name']
+            self.subtasks = config['subtasks']
+        else:
+            self.name = next(iter(config.keys()))
+            self.subtasks = config[self.name]
+        self.render_name = Environment().from_string(self.name).render
+        self.subtasks = ListTemplate(self.subtasks)
+
+    def render(self):
+        tasks = OrderedDict()
+        for context in self.contexts:
+            name = str(self.render_name(**context))
+            if name not in tasks:
+                tasks[name] = []
+            subtasks = self.subtasks.render(**context)
+            tasks[name].extend(subtasks)
         return tasks
 
 
@@ -56,109 +185,38 @@ class ListTemplate(object):
         return [str(render(**context)) for render in self.task_list]
 
 
-class TaskTemplate(object):
-    def __init__(self, config, parent, main_context):
-        self.config = parent
-        self.columns = config.get('columns', [])
-        self.contexts = [
-            Contexts(self.columns, contexts, main_context)
-            for contexts in config.get('contexts', [])
-        ]
-        self.task_templates = [
-            TaskTemplateEntry(
-                template, self)
-            for template in config.get('task_templates', [])
-        ]
-
-    def render(self):
-        tasks = OrderedDict()
-        for task in self.task_templates:
-            exported = task.render()
-            for k in exported:
-                if k in tasks:
-                    raise Exception('duplicate task key found: {0}'.format(k))
-            tasks.update(exported)
-        return tasks
-
-
-class TaskTemplateEntry(object):
-    def __init__(self, config, task_template):
-        self.config = task_template
-        if 'name' in config:
-            self.name = config['name']
-            self.subtasks = config['subtasks']
-        else:
-            self.name = next(iter(config.keys()))
-            self.subtasks = config[self.name]
-
-        env = Environment()
-        self.render_name = env.from_string(self.name).render
-        if isinstance(self.subtasks, six.string_types):
-            self.subtasks = self.config.config.list_templates[self.subtasks]
-        else:
-            self.subtasks = ListTemplate(self.subtasks)
-
-    def render(self):
-        tasks = OrderedDict()
-        for contexts in self.config.contexts:
-            for context in contexts:
-                name = str(self.render_name(**context))
-                if name not in tasks:
-                    tasks[name] = []
-                subtasks = self.subtasks.render(**context)
-                tasks[name].extend(subtasks)
-        return tasks
-
-
-class Contexts(object):
-    def __init__(self, columns, foreach, main_context):
-        self.items = []
-        for key in foreach:
-            if not isinstance(key, six.string_types) and isinstance(key, list):
-                self.items.append(key)
-            elif key not in main_context:
-                raise Exception('"{0}" key not found'.format(key))
-            else:
-                self.items.append(main_context[key])
-        self.product = [list(row) for row in itertools.product(*self.items)]
-        self.contexts = [dict(zip(columns, row)) for row in self.product]
-
-    def __iter__(self):
-        return iter(self.contexts)
-
-    def __len__(self):
-        return len(self.contexts)
-
-
 def generate_tasks(tasks, **context):
-    return TaskTemplatesList(tasks, context).render()
+    if isinstance(tasks, six.string_types):
+        tasks = yamlutil.load_dict(tasks)
+    tasks.update(context)
+    return Definitions(tasks).tasks.render()
 
 
 def main():
     import os
+    import sys
     import json
     import argparse
-    from pyauto.util import yamlutil
+
     args = argparse.ArgumentParser()
-    args.add_argument('-f', dest='filename', required=True)
-    args.add_argument('-k', '--key', dest='key', required=True)
-    args.add_argument('--render', dest='render', action='store_true')
-    args.add_argument('--to-yaml', dest='to_yaml', action='store_true')
+    args.add_argument('filename', nargs='+')
+    args.add_argument('-k', dest='key', required=False)
     args = args.parse_args()
 
-    with open(os.path.abspath(args.filename)) as f:
-        config = yamlutil.load_dict(f.read())
+    tasks = []
+    for filename in args.filename:
+        filename = os.path.abspath(filename)
+        with open(filename) as f:
+            tasks.append(f.read())
+    tasks = os.linesep.join(tasks)
+    tasks = yamlutil.load_dict(tasks)
 
-    tasks = TaskTemplatesList(config[args.key], config)
-    if not args.render:
-        print(json.dumps(config, indent=2))
-        return
-
-    rendered = tasks.render()
-    if args.to_yaml:
-        print(yamlutil.dump_dict(rendered))
+    config = Definitions(tasks)
+    if args.key is not None:
+        sys.stdout.write(yamlutil.dump_dict(
+            config.tasks.get_templates(args.key).render()))
     else:
-        print(json.dumps(rendered, indent=2))
+        sys.stdout.write(yamlutil.dump_dict(config.tasks.render()))
 
 
 if '__main__' == __name__:

@@ -7,187 +7,216 @@ from unittest import TestCase
 from collections import OrderedDict
 
 
-example_dir = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'taskgen-example')
-values_file = os.path.join(example_dir, 'values.yml')
-result_file = os.path.join(example_dir, 'result.yml')
-tasks_file = os.path.join(example_dir, 'tasks.yml')
-expected_contexts = [{'col2': '1', 'col1': 'a'},
-                     {'col2': '2', 'col1': 'a'},
-                     {'col2': '1', 'col1': 'b'},
-                     {'col2': '2', 'col1': 'b'}]
-example_task_template_entry = {
-    'dict': {
-        'name': '{{ col1 }}_{{ col2 }}_foo',
-        'subtasks': [
-            '{{ col1 }}_{{ col2 }}_qux',
-            '{{ col1 }}_{{ col2 }}_baz',
-        ],
+example_targets = {
+    'deployments': {
+        'name': 'dep',
+        'list': ['east', 'west'],
     },
-    'string': {
-        '{{ col1 }}_{{ col2 }}_foo': [
-            '{{ col1 }}_{{ col2 }}_qux',
-            '{{ col1 }}_{{ col2 }}_baz',
-        ]
+    'apps': {
+        'name': 'app',
+        'depends': 'deployments',
+        'list': ['web', 'api']
     },
-    'reference': {
-        '{{ col1 }}_{{ col2 }}_foo': 'col1_col2_foo'
+    'services': {
+        'name': ['app', 'srv'],
+        'depends': 'deployments',
+        'map': [{'web': ['redis']}, {'api': ['postgres']}]
     }
 }
-example_list_templates = {
-    'col1_col2_foo': ['{{ col1 }}_{{ col2 }}_foo']
-}
-example_resource = {'list1': ['a', 'b'], 'list2': ['1', '2']}
-expected_ttl_result = OrderedDict([
-    ('d1_a1_clone', ['clone,d1_a1']),
-    ('d1_a2_clone', ['clone,d1_a2']),
-    ('d2_a1_clone', ['clone,d2_a1']),
-    ('d2_a2_clone', ['clone,d2_a2']),
-    ('d1_deploy', ['init_deployment,d1', 'd1_clone', 'd1_generate']),
-    ('d2_deploy', ['init_deployment,d2', 'd2_clone', 'd2_generate']),
-    ('d1_a1_s1_create', ['create_service,d1_a1_s1']),
-    ('d1_a1_s2_create', ['create_service,d1_a1_s2']),
-    ('d2_a1_s1_create', ['create_service,d2_a1_s1']),
-    ('d2_a1_s2_create', ['create_service,d2_a1_s2']),
-    ('d1_a2_s3_create', ['create_service,d1_a2_s3']),
-    ('d2_a2_s3_create', ['create_service,d2_a2_s3']),
-    ('d1_a1_create_services', ['d1_a1_s1_create', 'd1_a1_s2_create']),
-    ('d2_a1_create_services', ['d2_a1_s1_create', 'd2_a1_s2_create']),
-    ('d1_a2_create_services', ['d1_a2_s3_create']),
-    ('d2_a2_create_services', ['d2_a2_s3_create'])])
-expected_tts_result = OrderedDict([
-    ('d1_a1_clone', ['clone,d1_a1']),
-    ('d1_a2_clone', ['clone,d1_a2']),
-    ('d2_a1_clone', ['clone,d2_a1']),
-    ('d2_a2_clone', ['clone,d2_a2']),
-    ('d1_deploy', ['init_deployment,d1', 'd1_clone', 'd1_generate']),
-    ('d2_deploy', ['init_deployment,d2', 'd2_clone', 'd2_generate']),
-    ('d1_a1_s1_create', ['create_service,d1_a1_s1']),
-    ('d1_a1_s2_create', ['create_service,d1_a1_s2']),
-    ('d2_a1_s1_create', ['create_service,d2_a1_s1']),
-    ('d2_a1_s2_create', ['create_service,d2_a1_s2']),
-    ('d1_a2_s3_create', ['create_service,d1_a2_s3']),
-    ('d2_a2_s3_create', ['create_service,d2_a2_s3']),
-    ('d1_a1_create_services', ['d1_a1_s1_create', 'd1_a1_s2_create']),
-    ('d2_a1_create_services', ['d2_a1_s1_create', 'd2_a1_s2_create']),
-    ('d1_a2_create_services', ['d1_a2_s3_create']),
-    ('d2_a2_create_services', ['d2_a2_s3_create'])])
-expected_tt_result = OrderedDict([
-    ('d1_a1_clone', ['clone,d1_a1']),
-    ('d1_a2_clone', ['clone,d1_a2']),
-    ('d2_a1_clone', ['clone,d2_a1']),
-    ('d2_a2_clone', ['clone,d2_a2'])])
-expected_tte_result = OrderedDict([
-    ('d1_a1_clone', ['clone,d1_a1']),
-    ('d1_a2_clone', ['clone,d1_a2']),
-    ('d2_a1_clone', ['clone,d2_a1']),
-    ('d2_a2_clone', ['clone,d2_a2'])])
 
 
-def get_values():
-    with open(values_file) as f:
-        return yamlutil.load_dict(f.read())
-
-
-def get_expected_result():
-    with open(result_file) as f:
-        return yamlutil.load_dict(f.read())
-
-
-def get_tasks():
-    with open(tasks_file) as f:
-        return yamlutil.load_dict(f.read())
-
-
-class Contexts(TestCase):
-    def test_init_simple(self):
-        ctxs = taskgen.Contexts(['col1', 'col2'], [['a', 'b'], ['1', '2']], {})
-        result = [ctx for ctx in ctxs]
-        self.assertListEqual(expected_contexts, result)
-
-    def test_init_complex(self):
-        ctxs = taskgen.Contexts(['col1', 'col2'], ['list1', 'list2'],
-                                example_resource)
-        result = [ctx for ctx in ctxs]
-        self.assertListEqual(expected_contexts, result)
-
-
-class TaskTemplatesList(TestCase):
+class Targets(TestCase):
     def test_init(self):
-        tasks = get_tasks()
-        ttl = taskgen.TaskTemplatesList(tasks['tasks'], tasks)
-        for tt in ttl.tasks:
-            self.assertIsInstance(tt, taskgen.TaskTemplates)
+        taskgen.Targets(example_targets)
+
+    def test_get_target(self):
+        targets = taskgen.Targets(example_targets)
+        target = targets.get_target('apps')
+        self.assertIsInstance(target, taskgen.Target)
+        target = targets.get_target('apps.only')
+        self.assertIsInstance(target, taskgen.Target)
+
+
+class Target(TestCase):
+    def setUp(self):
+        self.targets = taskgen.Targets(example_targets)
+
+    def test_get_ancestry(self):
+        target = self.targets.get_target('apps')
+        ancestry = target.get_ancestry()
+        self.assertEqual(len(ancestry), 2)
+        self.assertEqual('dep', ancestry[0].name)
+        self.assertEqual('app', ancestry[1].name)
+
+    def test_get_ancestry_list_only(self):
+        target = self.targets.get_target('apps.only')
+        ancestry = target.get_ancestry()
+        self.assertEqual(len(ancestry), 1)
+        self.assertEqual('app', ancestry[0].name)
+
+    def test_get_ancestry_map_only(self):
+        target = self.targets.get_target('services.only')
+        ancestry = target.get_ancestry()
+        self.assertEqual(len(ancestry), 1)
+        self.assertEqual(['app', 'srv'], ancestry[0].name)
+
+    def test_get_contexts(self):
+        target = self.targets.get_target('apps')
+        contexts = target.get_contexts()
+        expected = [
+            {'dep': 'east', 'app': 'web'},
+            {'dep': 'east', 'app': 'api'},
+            {'dep': 'west', 'app': 'web'},
+            {'dep': 'west', 'app': 'api'}]
+        self.assertListEqual(expected, contexts)
+
+    def test_get_contexts_map(self):
+        target = self.targets.get_target('services')
+        contexts = target.get_contexts()
+        expected = [
+            {'dep': 'east', 'app': 'web', 'srv': 'redis'},
+            {'dep': 'east', 'app': 'api', 'srv': 'postgres'},
+            {'dep': 'west', 'app': 'web', 'srv': 'redis'},
+            {'dep': 'west', 'app': 'api', 'srv': 'postgres'}]
+        self.assertListEqual(expected, contexts)
+
+    def test_get_contexts_map_only(self):
+        target = self.targets.get_target('services.only')
+        contexts = target.get_contexts()
+        expected = [
+            {'app': 'web', 'srv': 'redis'},
+            {'app': 'api', 'srv': 'postgres'}]
+        self.assertListEqual(expected, contexts)
+
+
+class Tasks(TestCase):
+    def setUp(self):
+        self.targets = taskgen.Targets(example_targets)
+
+    def test_init(self):
+        tasks = taskgen.Tasks({
+            'logins': {
+                'deployments': [
+                    {'{{ dep }}_login': ['login,{{ dep }}']},
+                    {'login': ['login,{{ dep }}']},
+                ]
+            }
+        }, self.targets)
+        templates = tasks.get_templates('logins')
+        self.assertIsInstance(templates, taskgen.TaskTemplates)
 
     def test_render(self):
-        tasks = get_tasks()
-        ttl = taskgen.TaskTemplatesList(tasks['tasks'], tasks)
-        result = ttl.render()
-        self.assertDictEqual(result, expected_ttl_result)
+        tasks = taskgen.Tasks({
+            'logins': OrderedDict([
+                ('deployments', [
+                    {'{{ dep }}_login': ['login,{{ dep }}']},
+                    {'login': ['{{ dep }}_login']},
+                ])
+            ]),
+            'deploy': OrderedDict([
+                ('apps', [
+                    {'{{ dep }}_{{ app }}_deploy': [
+                        'deploy,{{ dep }}_{{ app }}']},
+                    {'{{ dep }}_deploy': [
+                        '{{ dep }}_{{ app }}_deploy']}
+                ]),
+                ('deployments', [
+                    {'deploy': ['{{ dep }}_deploy']},
+                ]),
+                ('__plain__', [
+                    {'deploy_all': ['logins', 'deploy']}
+                ])
+            ])
+        }, self.targets)
+        result = tasks.render()
+        expected = OrderedDict([
+            ('east_login', ['login,east']),
+            ('west_login', ['login,west']),
+            ('login', ['east_login', 'west_login']),
+            ('east_web_deploy', ['deploy,east_web']),
+            ('east_api_deploy', ['deploy,east_api']),
+            ('west_web_deploy', ['deploy,west_web']),
+            ('west_api_deploy', ['deploy,west_api']),
+            ('east_deploy', ['east_web_deploy', 'east_api_deploy']),
+            ('west_deploy', ['west_web_deploy', 'west_api_deploy']),
+            ('deploy', ['east_deploy', 'west_deploy']),
+            ('deploy_all', ['logins', 'deploy'])])
+        self.assertDictEqual(result, expected)
 
 
 class TaskTemplates(TestCase):
     def setUp(self):
-        self.tasks = get_tasks()
-        self.ttl = taskgen.TaskTemplatesList(self.tasks['tasks'], self.tasks)
+        self.targets = taskgen.Targets({
+            'deployments': {
+                'name': 'dep',
+                'list': ['east', 'west'],
+            }
+        })
 
     def test_init(self):
-        tts = taskgen.TaskTemplates(self.tasks['tasks'][0], self.tasks)
-        for lt in tts.list_templates.values():
-            self.assertIsInstance(lt, taskgen.ListTemplate)
-        for tt in tts.task_templates:
-            self.assertIsInstance(tt, taskgen.TaskTemplate)
+        tt = taskgen.TaskTemplates({
+            'deployments': [
+                {'{{ dep }}_login': ['login,{{ dep }}']},
+                {'login': ['login,{{ dep }}']},
+            ]
+        }, self.targets)
 
     def test_render(self):
-        tts = taskgen.TaskTemplates(self.tasks['tasks'][0], self.tasks)
-        result = tts.render()
-        self.assertDictEqual(expected_tts_result, result)
-
-
-class ListTemplate(TestCase):
-    def test_init(self):
-        task_list = next(iter(example_list_templates.values()))
-        taskgen.ListTemplate(task_list)
-
-    def test_render(self):
-        task_list = next(iter(example_list_templates.values()))
-        lt = taskgen.ListTemplate(task_list)
-        self.assertListEqual(lt.render(col1='a', col2='b'), ['a_b_foo'])
+        tt = taskgen.TaskTemplates({
+            'deployments': [
+                {'{{ dep }}_login': ['login,{{ dep }}']},
+                {'login': ['login,{{ dep }}']},
+            ]
+        }, self.targets)
+        result = tt.render()
+        expected = OrderedDict([
+            ('east_login', ['login,east']),
+            ('west_login', ['login,west']),
+            ('login', ['login,east', 'login,west'])])
+        self.assertDictEqual(result, expected)
 
 
 class TaskTemplate(TestCase):
-    def setUp(self):
-        self.tasks = get_tasks()
-        self.ttl = taskgen.TaskTemplatesList(self.tasks['tasks'], self.tasks)
-        self.task = self.tasks['tasks'][0]['task_templates'][0]
-
     def test_init(self):
-        taskgen.TaskTemplate(self.task, self.ttl.tasks[0], self.tasks)
+        taskgen.TaskTemplate([
+            {'{{ dep }}_login': ['login,{{ dep }}']},
+            {'logint': ['login,{{ dep }}']},
+        ], [{'dep': 'east'}, {'dep': 'west'}])
 
     def test_render(self):
-        self.tasks = get_tasks()
-        self.ttl = taskgen.TaskTemplatesList(self.tasks['tasks'], self.tasks)
-        task = self.tasks['tasks'][0]['task_templates'][0]
-        tt = taskgen.TaskTemplate(self.task, self.ttl.tasks[0], self.tasks)
+        tt = taskgen.TaskTemplate([
+            {'{{ dep }}_login': ['login,{{ dep }}']},
+            {'login': ['login,{{ dep }}']},
+        ], [{'dep': 'east'}, {'dep': 'west'}])
         result = tt.render()
-        self.assertDictEqual(expected_tt_result, result)
+        expected = OrderedDict([
+            ('east_login', ['login,east']),
+            ('west_login', ['login,west']),
+            ('login', ['login,east', 'login,west'])
+        ])
+        self.assertDictEqual(result, expected)
 
 
 class TaskTemplateEntry(TestCase):
-    def setUp(self):
-        self.tasks = get_tasks()
-        self.ttl = taskgen.TaskTemplatesList(self.tasks['tasks'], self.tasks)
-        self.task_template = \
-            self.tasks['tasks'][0]['task_templates'][0]['task_templates'][0]
-        self.tt = self.ttl.tasks[0].task_templates[0]
-#        self.tt = taskgen.TaskTemplate(self.task_template, self.ttl.tasks[0], self.tasks)
-
     def test_init(self):
         taskgen.TaskTemplateEntry(
-                self.task_template, self.tt)
+            {'{{ dep }}_login': ['login,{{ dep }}']}, [{'dep': 'east'}])
 
     def test_render(self):
         tte = taskgen.TaskTemplateEntry(
-            self.task_template, self.tt)
+            {'{{ dep }}_login': ['login,{{ dep }}']}, [{'dep': 'east'}])
         result = tte.render()
-        self.assertDictEqual(expected_tte_result, result)
+        expected = OrderedDict([('east_login', ['login,east'])])
+        self.assertEqual(result, expected)
+
+
+class ListTemplate(TestCase):
+    def setUp(self):
+        self.list_templates = ['{{ col1 }}_{{ col2 }}_foo']
+
+    def test_init(self):
+        taskgen.ListTemplate(self.list_templates)
+
+    def test_render(self):
+        lt = taskgen.ListTemplate(self.list_templates)
+        self.assertListEqual(lt.render(col1='a', col2='b'), ['a_b_foo'])

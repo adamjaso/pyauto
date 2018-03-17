@@ -1,8 +1,4 @@
-deployments:
-{{ deployments|to_yaml }}
-
-apps:
-{{ apps|to_yaml }}
-
+task_modules:
+- example_tasks
 tasks:
-  {{ tasks|generate_tasks(apps=apps, deployments=deployments)|to_yaml(2) }}
+  {{ dict(tasks=tasks, targets=targets)|generate_tasks|to_yaml(2) }}

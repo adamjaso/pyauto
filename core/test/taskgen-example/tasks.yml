@@ -1,40 +1,181 @@
----
-deployments: [d1, d2]
-apps: [a1, a2]
 tasks:
-- list_templates:
-    clone:
-    - clone,{{ dep }}_{{ app }}
-    create_service:
-    - create_service,{{ dep }}_{{ app }}_{{ srv }}
-    dep_deploy:
-    - init_deployment,{{ dep }}
-    - '{{ dep }}_clone'
-    - '{{ dep }}_generate'
-    dep_app_create_services:
-    - '{{ dep }}_{{ app }}_{{ srv }}_create'
+  login:
+    deployments:
+    - '{{ dep }}_login':
+      - 'login,{{ dep }}'
+    - 'logins':
+      - '{{ dep }}_login'
 
-  task_templates:
-  # app task definitions
-  - columns: [dep, app]
-    contexts:
-    - [deployments, apps]
-    task_templates:
-    - '{{ dep }}_{{ app }}_clone': clone
+  create_app_copy:
+    apps:
+    - '{{ dep }}_{{ app }}_clone':
+      - 'remove_app_copy,{{ dep }}_{{ app }}'
+      - 'create_app_copy,{{ dep }}_{{ app }}'
+    - '{{ app }}_clone':
+      - '{{ dep }}_{{ app }}_clone'
+    - '{{ dep }}_clone':
+      - '{{ dep }}_{{ app }}_clone'
+    deployments:
+    - 'clone':
+      - '{{ dep }}_clone'
 
-  # per dep definition
-  - columns: [dep]
-    contexts:
-    - [deployments]
-    task_templates:
-    - '{{ dep }}_deploy': dep_deploy
+  create_services:
+    services:
+    - '{{ dep }}_{{ app }}_{{ srv }}_create':
+      - 'create_service,{{ dep }}_{{ app }}_{{ srv }}'
+    - '{{ dep }}_{{ app }}_create_services':
+      - '{{ dep }}_{{ app }}_{{ srv }}_create'
+    apps:
+    - '{{ dep }}_create_services':
+      - '{{ dep }}_{{ app }}_create_services'
+    - '{{ app }}_create_services':
+      - '{{ dep }}_{{ app }}_create_services'
+    deployments:
+    - 'create_services':
+      - '{{ dep }}_create_services'
 
-  # service tag definitions
-  - columns: [dep, app, srv]
-    contexts:
-    - [deployments, [a1], [s1, s2]]
-    - [deployments, [a2], [s3]]
-#    - [deployments, [a1, a2], [s4]]
-    task_templates:
-    - '{{ dep }}_{{ app }}_{{ srv }}_create': create_service
-    - '{{ dep }}_{{ app }}_create_services': dep_app_create_services
+  destroy_services:
+    services:
+    - '{{ dep }}_{{ app }}_{{ srv }}_destroy':
+      - 'destroy_service,{{ dep }}_{{ app }}_{{ srv }}'
+    - '{{ dep }}_{{ app }}_destroy_services':
+      - '{{ dep }}_{{ app }}_{{ srv }}_destroy'
+    apps:
+    - '{{ dep }}_destroy_services':
+      - '{{ dep }}_{{ app }}_destroy_services'
+    - '{{ app }}_destroy_services':
+      - '{{ dep }}_{{ app }}_destroy_services'
+    deployments:
+    - 'destroy_services':
+      - '{{ dep }}_destroy_services'
+
+  wait_create_services:
+    services:
+    - '{{ dep }}_{{ app }}_{{ srv }}_wait_create_services':
+      - 'wait_service_provisioned,{{ dep }}_{{ app }}_{{ srv }}'
+    - '{{ dep }}_{{ app }}_wait_create_services':
+      - '{{ dep }}_{{ app }}_{{ srv }}_wait_create_services'
+    apps:
+    - '{{ dep }}_wait_create_services':
+      - '{{ dep }}_{{ app }}_wait_create_services'
+    - '{{ app }}_wait_create_services':
+      - '{{ dep }}_{{ app }}_wait_create_services'
+    deployments:
+    - 'wait_create_services':
+      - '{{ dep }}_wait_create_services'
+
+  wait_destroy_services:
+    services:
+    - '{{ dep }}_{{ app }}_{{ srv }}_wait_destroy_services':
+      - 'wait_service_deprovisioned,{{ dep }}_{{ app }}_{{ srv }}'
+    - '{{ dep }}_{{ app }}_wait_destroy_services':
+      - '{{ dep }}_{{ app }}_{{ srv }}_wait_destroy_services'
+    apps:
+    - '{{ dep }}_wait_destroy_services':
+      - '{{ dep }}_{{ app }}_wait_destroy_services'
+    - '{{ app }}_wait_destroy_services':
+      - '{{ dep }}_{{ app }}_wait_destroy_services'
+    deployments:
+    - 'wait_destroy_services':
+      - '{{ dep }}_wait_destroy_services'
+
+  push_apps:
+    apps:
+    - '{{ dep }}_{{ app }}_push_apps':
+      - 'push_app,{{ dep }}_{{ app }}'
+    - '{{ dep }}_push_apps':
+      - '{{ dep }}_{{ app }}_push_apps'
+    - '{{ app }}_push_apps':
+      - '{{ dep }}_{{ app }}_push_apps'
+    deployments:
+    - 'push_apps':
+      - '{{ dep }}_push_apps'
+
+  wait_apps:
+    apps:
+    - '{{ dep }}_{{ app }}_wait':
+      - 'wait_app,{{ dep }}_{{ app }}'
+    - '{{ dep }}_wait':
+      - '{{ dep }}_{{ app }}_wait'
+    - '{{ app }}_wait':
+      - '{{ dep }}_{{ app }}_wait'
+    deployments:
+    - 'wait_apps':
+      - '{{ dep }}_wait'
+
+  destroy_apps:
+    apps:
+    - '{{ dep }}_{{ app }}_destroy_app':
+      - 'destroy_app,{{ dep }}_{{ app }}'
+    - '{{ dep }}_destroy_app':
+      - '{{ dep }}_{{ app }}_destroy'
+    - '{{ app }}_destroy_app':
+      - '{{ dep }}_{{ app }}_destroy'
+    deployments:
+    - 'destroy_apps':
+      - '{{ dep }}_destroy_app'
+
+  deploy_app:
+    apps:
+    - '{{ dep }}_{{ app }}_deploy':
+      - '{{ dep }}_login'
+      - '{{ dep }}_{{ app }}_clone'
+      - '{{ dep }}_{{ app }}_create_services'
+      - '{{ dep }}_{{ app }}_wait_create_services'
+      - '{{ dep }}_{{ app }}_push_apps'
+      - '{{ dep }}_{{ app }}_wait_apps'
+
+    deployments:
+    - '{{ dep }}_deploy':
+      - '{{ dep }}_login'
+      - '{{ dep }}_clone'
+      - '{{ dep }}_create_services'
+      - '{{ dep }}_wait_create_services'
+      - '{{ dep }}_push_apps'
+      - '{{ dep }}_wait_apps'
+
+    __plain__:
+    - 'deploy_all':
+      - 'logins'
+      - 'clone'
+      - 'create_services'
+      - 'wait_create_services'
+      - 'push_apps'
+      - 'wait_apps'
+    - 'destroy_all':
+      - 'logins'
+      - 'destroy_services'
+      - 'wait_destroy_services'
+      - 'destroy_apps'
+
+    apps.only:
+    - '{{ app }}_deploy':
+      - 'logins'
+      - '{{ app }}_clone'
+      - '{{ app }}_create_services'
+      - '{{ app }}_wait_create_services'
+      - '{{ app }}_push_apps'
+      - '{{ app }}_wait_apps'
+
+  destroy_app:
+    apps:
+    - '{{ dep }}_{{ app }}_destroy':
+      - '{{ dep }}_login'
+      - '{{ dep }}_{{ app }}_remove'
+      - '{{ dep }}_{{ app }}_destroy_services'
+      - '{{ dep }}_{{ app }}_wait_destroy_services'
+      - '{{ dep }}_{{ app }}_destroy_apps'
+
+    deployments:
+    - '{{ dep }}_destroy':
+      - '{{ dep }}_remove'
+      - '{{ dep }}_destroy_services'
+      - '{{ dep }}_wait_destroy_services'
+      - '{{ dep }}_destroy_apps'
+
+    apps.only:
+    - '{{ app }}_destroy':
+      - '{{ app }}_remove'
+      - '{{ app }}_destroy_services'
+      - '{{ app }}_wait_destroy_services'
+      - '{{ app }}_destroy_apps'
