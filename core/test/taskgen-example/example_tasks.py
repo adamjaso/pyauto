@@ -1,38 +1,41 @@
+from time import sleep
+
+
 def login(config, dep):
-    pass
+    sleep(1)
 
 
 def remove_app_copy(config, app):
-    pass
+    sleep(1)
 
 
 def create_app_copy(config, app):
-    pass
+    sleep(1)
 
 
 def create_service(config, srv):
-    pass
+    sleep(1)
 
 
 def destroy_service(config, srv):
-    pass
+    sleep(1)
 
 
 def wait_service_provisioned(config, srv):
-    pass
+    sleep(1)
 
 
 def wait_service_deprovisioned(config, srv):
-    pass
+    sleep(1)
 
 
 def push_app(config, app):
-    pass
+    sleep(1)
 
 
 def destroy_app(config, app):
-    pass
+    sleep(1)
 
 
 def wait_app(config, app):
-    pass
+    sleep(1)

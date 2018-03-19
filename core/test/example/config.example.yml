@@ -7,10 +7,14 @@ example:
 example2: {}
 example_list:
 - id: test
+task_modules:
+- example.commands
 tasks:
   do_things:
   - do_thing,thing1
   - do_thing,thing2
   - do_thing,abc
   - do_thing,def
-
+  do_all_things:
+  - do_things
+  - do_things

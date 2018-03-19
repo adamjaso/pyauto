@@ -54,7 +54,6 @@ class Config(object):
             self._dirname = parent._dirname
         if 'tasks' in config_dict:
             task_modules = config_dict.get('task_modules', [])
-            task_modules.insert(0, '__main__')
             self._task_sequences = tasks.TaskSequences(
                 task_modules, config_dict['tasks'], self)
 

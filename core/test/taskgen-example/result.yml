@@ -182,29 +182,29 @@ tasks:
   push_apps:
   - east_push_apps
   - west_push_apps
-  east_web_wait:
+  east_web_wait_apps:
   - wait_app,east_web
-  east_api_wait:
+  east_api_wait_apps:
   - wait_app,east_api
-  west_web_wait:
+  west_web_wait_apps:
   - wait_app,west_web
-  west_api_wait:
+  west_api_wait_apps:
   - wait_app,west_api
-  east_wait:
-  - east_web_wait
-  - east_api_wait
-  west_wait:
-  - west_web_wait
-  - west_api_wait
-  web_wait:
-  - east_web_wait
-  - west_web_wait
-  api_wait:
-  - east_api_wait
-  - west_api_wait
+  east_wait_apps:
+  - east_web_wait_apps
+  - east_api_wait_apps
+  west_wait_apps:
+  - west_web_wait_apps
+  - west_api_wait_apps
+  web_wait_apps:
+  - east_web_wait_apps
+  - west_web_wait_apps
+  api_wait_apps:
+  - east_api_wait_apps
+  - west_api_wait_apps
   wait_apps:
-  - east_wait
-  - west_wait
+  - east_wait_apps
+  - west_wait_apps
   east_web_destroy_app:
   - destroy_app,east_web
   east_api_destroy_app:

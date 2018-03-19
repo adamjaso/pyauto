@@ -93,15 +93,15 @@ tasks:
 
   wait_apps:
     apps:
-    - '{{ dep }}_{{ app }}_wait':
+    - '{{ dep }}_{{ app }}_wait_apps':
       - 'wait_app,{{ dep }}_{{ app }}'
-    - '{{ dep }}_wait':
-      - '{{ dep }}_{{ app }}_wait'
-    - '{{ app }}_wait':
-      - '{{ dep }}_{{ app }}_wait'
+    - '{{ dep }}_wait_apps':
+      - '{{ dep }}_{{ app }}_wait_apps'
+    - '{{ app }}_wait_apps':
+      - '{{ dep }}_{{ app }}_wait_apps'
     deployments:
     - 'wait_apps':
-      - '{{ dep }}_wait'
+      - '{{ dep }}_wait_apps'
 
   destroy_apps:
     apps:
