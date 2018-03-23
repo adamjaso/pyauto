@@ -8,6 +8,7 @@ from pyauto.core import tasks as pyauto_tasks, config as pyauto_config
 
 test_example_commands = 'example.commands'
 test_example_func_name = 'do_thing'
+test_example_module_func_name = 'example.commands.do_thing'
 task_seq_name = 'do_things'
 config_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
@@ -75,6 +76,27 @@ class TestTaskSequences(TestCase):
         self.assertEqual(mod, example_commands)
         self.assertEqual(fun.__name__, test_example_func_name)
 
+    def test_get_task_module_func(self):
+        tasks = pyauto_tasks.TaskSequences(
+                get_task_modules(),
+                get_task_dict(),
+                get_config())
+        mod, fun = tasks.get_task(test_example_module_func_name)
+        self.assertEqual(mod, example_commands)
+        self.assertEqual(fun.__name__, test_example_func_name)
+
+    def test_run_task_module_func(self):
+        config = get_config()
+        tasks = pyauto_tasks.TaskSequences(
+                get_task_modules(),
+                get_task_dict(),
+                config)
+        mod, fun = tasks.get_task(test_example_module_func_name)
+        self.assertEqual(mod, example_commands)
+        self.assertEqual(fun.__name__, test_example_func_name)
+        res = fun(config, 'jkl')
+        self.assertDictEqual(dict(res), dict(OrderedDict([('id', 'jkl')])))
+
     def test_get_task_sequence(self):
         tasks = pyauto_tasks.TaskSequences(
                 get_task_modules(),
@@ -129,6 +151,18 @@ class TestTask(TestCase):
         task = pyauto_tasks.Task(tasks, 'do_thing,abc')
         self.assertEqual(task.module_func_name,
                          'example.commands.do_thing')
+
+    def test_module_func_name_with_shlex(self):
+        tasks = pyauto_tasks.TaskSequences(
+                get_task_modules(),
+                get_task_dict(),
+                get_config())
+        pyauto_tasks.TaskSpec.set_parser(
+            pyauto_tasks.TaskSpec.parse_command_format)
+        task = pyauto_tasks.Task(tasks, 'example.commands.do_thing abc')
+        self.assertEqual(task.module_func_name,
+                         'example.commands.do_thing')
+        pyauto_tasks.TaskSpec.set_parser(None)
 
     def test_module_func_args(self):
         tasks = pyauto_tasks.TaskSequences(

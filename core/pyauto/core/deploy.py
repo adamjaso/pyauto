@@ -87,7 +87,6 @@ class ParallelCommand(object):
 
         def async_task(config_file, action, log_file):
             if log_file is not None:
-                import sys
                 logs = open(log_file, 'w')
                 sys.stdout = logs
                 sys.stderr = logs

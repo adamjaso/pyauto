@@ -3,6 +3,7 @@ import os
 import sys
 import inspect
 import importlib
+import shlex
 from collections import OrderedDict
 from pyauto.util import yamlutil
 
@@ -40,9 +41,17 @@ class TaskSequences(object):
         return [m.__name__ for m in self.task_modules]
 
     def get_task(self, task_name):
-        for sm in self.task_modules:
-            if hasattr(sm, task_name):
-                return sm, getattr(sm, task_name)
+        if '.' in task_name:
+            parts = task_name.split('.')
+            module = '.'.join(parts[:-1])
+            func = parts[-1]
+            for sm in self.task_modules:
+                if sm.__name__ == module and hasattr(sm, func):
+                    return sm, getattr(sm, func)
+        else:
+            for sm in self.task_modules:
+                if hasattr(sm, task_name):
+                    return sm, getattr(sm, task_name)
         raise Exception('Task module "{0}" not found'.format(task_name))
 
     def _get_task_sequence(self, task_name):
@@ -142,26 +151,24 @@ class Task(object):
     def __init__(self, parent, task_str):
         self.tasks = parent
         self.orig = task_str
-        parts = [str(p) for p in self.orig.split(',')]
-        self.name = parts[0]
-        self.args = parts[1:]
-        self.module, self.func = self.tasks.get_task(self.name)
+        self.spec = TaskSpec.parse(task_str)\
+            .parse_module_func(self.tasks.task_modules)
+        self.name = self.spec.name
+        self.args = self.spec.args
+#        self.module, self.func = self.tasks.get_task(self.name)
+        self.module = self.spec.module
+        self.func = self.spec.func
 
     def to_tree(self):
-        return self.module_func_args
+        return self.spec.module_func_args
 
     @property
     def module_func_name(self):
-        if '__main__' != self.module.__name__:
-            module_name = self.module.__name__
-        else:
-            module_name = ''
-        return '.'.join([module_name, self.name])
+        return self.spec.module_func_name
 
     @property
     def module_func_args(self):
-        parts = [self.module_func_name, '(', ', '.join(self.args), ')']
-        return ' '.join(parts)
+        return self.spec.module_func_args
 
     def invoke(self):
         return self.func(self.tasks.config, *self.args)
@@ -170,4 +177,69 @@ class Task(object):
         return self.__repr__()
 
     def __repr__(self):
-        return self.module_func_args
+        return self.spec.module_func_args
+
+
+class TaskSpec(object):
+    default_parser = None
+    module = None
+    module_name = None
+    func = None
+    func_name = None
+    name = None
+    args = None
+
+    def __init__(self, *parts):
+        parts = list(parts)
+        self.name = parts[0]
+        self.args = parts[1:]
+
+    @property
+    def module_func_name(self):
+        return '.'.join([self.module_name, self.func_name])
+
+    @property
+    def module_func_args(self):
+        parts = [self.module_func_name, '(', ', '.join(self.args), ')']
+        return ' '.join(parts)
+
+    def parse_module_func(self, task_modules):
+        if '.' in self.name:
+            func_parts = self.name.split('.')
+            self.module_name = '.'.join(func_parts[:-1])
+            self.func_name = func_parts[-1]
+            self.module = importlib.import_module(self.module_name)
+            self.func = getattr(self.module, self.func_name)
+            for sm in task_modules:
+                if sm.__name__ == self.module_name and \
+                        hasattr(sm, self.func_name):
+                    return self
+        else:
+            for sm in task_modules:
+                if hasattr(sm, self.name):
+                    self.module_name = sm.__name__
+                    self.func_name = self.name
+                    self.module = sm
+                    self.func = getattr(sm, self.name)
+                    return self
+        raise Exception('Task module "{0}" not found'.format(self.name))
+
+    @classmethod
+    def parse_comma_format(cls, orig):
+        parts = [str(p) for p in orig.split(',')]
+        return cls(*parts)
+
+    @classmethod
+    def parse_command_format(cls, orig):
+        parts = shlex.split(orig)
+        return cls(*parts)
+
+    @classmethod
+    def parse(cls, orig):
+        if cls.default_parser is None:
+            cls.default_parser = cls.parse_comma_format
+        return cls.default_parser(orig)
+
+    @classmethod
+    def set_parser(cls, parser):
+        cls.default_parser = parser
