@@ -2,7 +2,6 @@ from __future__ import print_function
 import os
 import json
 import requests
-from pyauto import config
 from . import config as filecache_config
 from ..local import config as local_config
 from ..local import commands as local_commands
@@ -60,8 +59,3 @@ def key_data_zip_extract_file(config, key_data_id, filepath):
 
 def key_data_gzip_decompress(config, key_data_id):
     return config.filecache.get_key_data(key_data_id).entry.gzip_decompress()
-
-
-if '__main__' == __name__:
-    from pyauto import deploy
-    deploy.main()
