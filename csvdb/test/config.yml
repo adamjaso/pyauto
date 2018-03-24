@@ -1,0 +1,22 @@
+task_modules:
+- pyauto.filecache.commands
+- pyauto.local.commands
+- pyauto.csvdb.commands
+local:
+  workspace_dir: .
+csvdb:
+  directory: .
+  schemas:
+  - tag: sitemaps
+    tables:
+    - name: sitemapindex
+  databases:
+  - tag: sitemaps
+    schema: sitemaps
+    name: sitemaps.db
+  csvs:
+  - tag: sitemaps
+    database: sitemaps
+    tablename: sitemapindex
+    resource: local/get_workspace_path,example.csv
+tasks: {}
