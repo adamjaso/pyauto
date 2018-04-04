@@ -1,0 +1,29 @@
+task_modules:
+- pyauto.shell.commands
+- pyauto.local.commands
+local:
+  workspace_dir: workspace
+  destinations:
+  - tag: home
+    directory: .
+shell:
+- tag: show-home-1
+  directory: .
+  stdout: output.1
+  stderr: output.2
+  command: pwd
+- tag: show-home-2
+  directory_resource: local/get_destination_path,home
+  command: echo $(pwd)
+- tag: show-home-3
+  directory_local: home
+  command: echo $(pwd)
+- tag: generate-rsa-key
+  directory: .
+  stdout: private.key
+  command: openssl genrsa 2048
+- tag: public-rsa-key
+  directory: .
+  stdout: public.out
+  command: openssl rsa -in private.key -pubout
+tasks: {}
