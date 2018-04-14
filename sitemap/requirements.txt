@@ -1,0 +1,7 @@
+lxml
+requests
+reppy
+pyauto.util
+pyauto.core
+pyauto.csvdb
+pyauto.filecache

@@ -12,4 +12,3 @@ tags.lock
 *.swo
 *.swp
 *.pyc
-config.*.yml
