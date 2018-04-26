@@ -1,6 +1,11 @@
 local:
   workspace_dir: workspace
   template_dir: templates
+  destinations:
+  - id: key1
+    directory: ../key1.txt
+  - id: key2
+    directory: ../key2.txt
 
 vault:
   directory: vault
@@ -15,6 +20,13 @@ vault:
     path: prod/myenv1
     endpoint: prod
     filename: prod/prod_myenv1.yml
+    mapping:
+      key1: local/get_destination_path,key1
+      key2: local/get_destination_path,key2
+  - id: prod_myenv2
+    path: prod/myenv1
+    endpoint: prod
+    filename: prod/prod_myenv2.yml
 
 task_modules:
 - pyauto.vault.commands

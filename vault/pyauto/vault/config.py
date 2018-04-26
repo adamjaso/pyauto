@@ -1,6 +1,4 @@
-import re
 import os
-import six
 import hvac
 from pyauto.core import config
 from pyauto.util import yamlutil
@@ -44,7 +42,8 @@ class Endpoint(config.Config):
 
     def get_client(self):
         if self.client is None:
-            self.client = hvac.Client(url=self.base_url, verify=self.ssl_verify)
+            self.client = hvac.Client(
+                url=self.base_url, verify=self.ssl_verify)
             if 'role_id' in self and 'secret_id' in self:
                 self.client.auth_approle(self.role_id, self.secret_id)
             elif 'username' in self and 'password' in self:
@@ -69,6 +68,13 @@ class Path(config.Config):
     def filename(self, *path):
         return self.config._get_path(self['filename'])
 
+    @property
+    def mapping(self):
+        return {
+            name: self.config.config.get_resource(self['mapping'][name])
+            for name, value in self['mapping'].items()
+        }
+
     def get_endpoint(self):
         return self.config.get_endpoint(self.endpoint)
 
@@ -80,17 +86,40 @@ class Path(config.Config):
         client = self.get_endpoint().get_client()
         return client.write(self.path, **data)
 
+    def save_mapping(self, data):
+        if 'mapping' in self:
+            filenames = {}
+            for name, filename in self.mapping.items():
+                filenames[name] = filename
+                value = data[name]
+                with open(filename, 'w') as f:
+                    f.write(value)
+            return self.mapping
+        else:
+            data = yamlutil.dump_dict(data, safe_dump=True)
+            with open(self.filename, 'w') as f:
+                f.write(data)
+            return self.filename
+
+    def load_mapping(self):
+        result = {}
+        if 'mapping' in self:
+            for name, filename in self.mapping.items():
+                with open(filename, 'r') as f:
+                    result[name] = f.read()
+            return result
+        else:
+            with open(self.filename, 'r') as f:
+                data = yamlutil.load_dict(f.read())
+                return data
+
     def upload_file(self):
-        with open(self.filename, 'r') as f:
-            data = yamlutil.load_dict(f.read())
-            return self.write(**data)
+        data = self.load_mapping()
+        return self.write(**data)
 
     def download_file(self):
         res = self.read()
-        data = yamlutil.dump_dict(res['data'])
-        with open(self.filename, 'w') as f:
-            f.write(data)
-        return self.filename
+        return self.save_mapping(res['data'])
 
 
 config.set_config_class('vault', Vault)

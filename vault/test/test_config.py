@@ -1,4 +1,7 @@
-import os, shutil, hvac, responses
+import os
+import shutil
+import hvac
+import responses
 from unittest import TestCase
 from pyauto.core import deploy
 from pyauto.core import config
@@ -18,9 +21,11 @@ def expect_login():
 
 
 def expect_read():
-    responses.add(responses.GET,
-                  'https://localhost/v1/secret/prod/myenv1',
-                  json={'data': {'id': 'abc123', 'name': 'ABC 123'}})
+    with open(os.path.join(dirname, 'key1.txt')) as f1, \
+            open(os.path.join(dirname, 'key2.txt')) as f2:
+        responses.add(responses.GET,
+                      'https://localhost/v1/secret/prod/myenv1',
+                      json={'data': {'key1': f1.read(), 'key2': f2.read()}})
 
 
 def expect_write():
@@ -86,15 +91,31 @@ class Path(TestCase):
         self.assertIsInstance(data, dict)
 
     @responses.activate
-    def test_download_file(self):
+    def test_download_file_mapping(self):
         expect_login()
         expect_read()
         path = vault.get_path('prod_myenv1')
+        values = {
+            name: open(filename).read()
+            for name, filename in path.mapping.items()
+        }
+        filenames = path.download_file()
+        self.assertTrue(os.path.isfile(filenames['key1']))
+        self.assertTrue(os.path.isfile(filenames['key2']))
+        for name, orig in values.items():
+            value = open(filenames[name]).read()
+            self.assertEqual(orig, value)
+
+    @responses.activate
+    def test_download_file(self):
+        expect_login()
+        expect_read()
+        path = vault.get_path('prod_myenv2')
         filename = path.download_file()
         self.assertTrue(os.path.isfile(filename))
 
     @responses.activate
-    def test_upload_file(self):
+    def test_upload_file_mapping(self):
         expect_login()
         expect_read()
         expect_write()
@@ -104,3 +125,13 @@ class Path(TestCase):
         res = path.upload_file()
         self.assertIsInstance(res, dict)
 
+    @responses.activate
+    def test_upload_file(self):
+        expect_login()
+        expect_read()
+        expect_write()
+        path = vault.get_path('prod_myenv2')
+        self.assertIsInstance(path, vault_config.Path)
+        path.download_file()
+        res = path.upload_file()
+        self.assertIsInstance(res, dict)
