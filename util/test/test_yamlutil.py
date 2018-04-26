@@ -1,5 +1,5 @@
-from unittest import TestCase
 import yaml
+from unittest import TestCase
 from collections import OrderedDict
 from pyauto.util import yamlutil
 
@@ -20,6 +20,22 @@ sample_ordered_dict = OrderedDict([
 sample_ordered_dict['h'] = 6
 
 
+sample_unicode_ordered_dict = OrderedDict([
+    (u'q', 1),
+    (u'b', 2),
+    (u'c', OrderedDict([
+        (u'd', 3),
+        (u'e', 4),
+        (u'f', [
+            OrderedDict([
+                (u'g', 5)
+            ])
+        ])
+    ]))
+])
+sample_unicode_ordered_dict['h'] = 6
+
+
 sample_ordered_yaml = """
 q: 1
 b: 2
@@ -29,6 +45,33 @@ c:
   f:
   - g: 5
 h: 6
+""".strip()
+
+
+sample_unicode_ordered_yaml = """
+q: 1
+b: 2
+c:
+  d: 3
+  e: 4
+  f:
+  - g: 5
+h: 6
+""".strip()
+
+
+sample_all = [
+    {'a': 1, 'b': 2},
+    {'c': 3, 'd': 4}
+]
+
+
+sample_all_yaml = """
+a: 1
+b: 2
+---
+c: 3
+d: 4
 """.strip()
 
 
@@ -85,6 +128,14 @@ class TestDumpDict(TestCase):
     def test_dump_dict_unordered(self):
         res = yamlutil.dump_dict(sample_dict).strip()
         self.assertEqual(sample_yaml, res)
+
+    def test_safe_dump_unicode(self):
+        data = yamlutil.dump_dict(sample_unicode_ordered_dict, safe_dump=True)
+        self.assertEqual(sample_unicode_ordered_yaml, data.strip())
+
+    def test_dump_all_unordered(self):
+        data = yamlutil.dump_dict(sample_all, dump_all=True)
+        self.assertEqual(sample_all_yaml, data.strip())
 
 
 class TestBlockValues(TestCase):

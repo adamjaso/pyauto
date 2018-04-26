@@ -7,7 +7,17 @@ def dump_dict(data_dict, **kwargs):
     kwargs['default_flow_style'] = False
     if 'width' not in kwargs:
         kwargs['width'] = 240
-    return yaml.dump(data_dict, **kwargs)
+    if kwargs.get('safe_dump_all', False):
+        del kwargs['safe_dump_all']
+        return yaml.safe_dump_all(data_dict, **kwargs)
+    elif kwargs.get('safe_dump', False):
+        del kwargs['safe_dump']
+        return yaml.safe_dump(data_dict, **kwargs)
+    elif kwargs.get('dump_all', False):
+        del kwargs['dump_all']
+        return yaml.dump_all(data_dict, **kwargs)
+    else:
+        return yaml.dump(data_dict, **kwargs)
 
 
 def load_dict(stream, **kwargs):
@@ -23,7 +33,17 @@ def load_dict(stream, **kwargs):
 
     OrderedLoader.add_constructor(
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping)
-    return yaml.load(stream, OrderedLoader)
+    if kwargs.get('safe_load_all', False):
+        del kwargs['safe_load_all']
+        return yaml.safe_load_all(stream, OrderedLoader)
+    elif kwargs.get('safe_load', False):
+        del kwargs['safe_load']
+        return yaml.safe_load(stream, OrderedLoader)
+    elif kwargs.get('dump_all', False):
+        del kwargs['dump_all']
+        return yaml.dump_all(stream, OrderedLoader)
+    else:
+        return yaml.load(stream, OrderedLoader)
 
 
 def _should_use_block(value):
@@ -51,4 +71,5 @@ def _represent_dict_order(self, data):
 
 
 yaml.add_representer(OrderedDict, _represent_dict_order)
+yaml.SafeDumper.add_representer(OrderedDict, _represent_dict_order)
 yaml.representer.BaseRepresenter.represent_scalar = _represent_scalar
