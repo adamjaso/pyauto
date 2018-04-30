@@ -40,6 +40,24 @@ class Vault(config.Config):
 class Endpoint(config.Config):
     client = None
 
+    def __init__(self, config, parent=None):
+        super(Endpoint, self).__init__(config, parent)
+        if 'base_url' not in self and 'base_url_env' in self:
+            self['base_url'] = os.getenv(self['base_url_env'])
+        if 'secret_path' not in self and 'secret_path_env' in self:
+            self['secret_path'] = os.getenv(self['secret_path_env'])
+        if 'ssl_verify' not in self and 'ssl_verify_env' in self:
+            self['ssl_verify'] = \
+                os.getenv('ssl_verify_env', 'true').strip().lower() == 'true'
+        if 'role_id' not in self and 'role_id_env' in self:
+            self['role_id'] = os.getenv(self['role_id_env'])
+        if 'secret_id' not in self and 'secret_id_env' in self:
+            self['secret_id'] = os.getenv(self['secret_id_env'])
+        if 'username_env' in self:
+            self['username'] = os.getenv(self['username_env'])
+        if 'password_env' in self:
+            self['password'] = os.getenv(self['password_env'])
+
     def get_client(self):
         if self.client is None:
             self.client = hvac.Client(

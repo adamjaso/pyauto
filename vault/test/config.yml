@@ -15,6 +15,13 @@ vault:
     secret_path: secret
     role_id: ''
     secret_id: ''
+  - id: prodenv
+    base_url_env: VAULT_URL
+    secret_path_env: VAULT_SECRET_PATH
+    role_id_env: VAULT_ROLE_ID
+    secret_id_env: VAULT_SECRET_ID
+    username_env: VAULT_USERNAME
+    password_env: VAULT_PASSWORD
   paths:
   - id: prod_myenv1
     path: prod/myenv1
@@ -27,6 +34,10 @@ vault:
     path: prod/myenv1
     endpoint: prod
     filename: prod/prod_myenv2.yml
+  - id: prod_myenv3
+    path: prod/myenv1
+    endpoint: prodenv
+    filename: prod/prod_myenv3.yml
 
 task_modules:
 - pyauto.vault.commands

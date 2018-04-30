@@ -8,6 +8,17 @@ from pyauto.core import config
 from pyauto.vault import config as vault_config
 config.set_id_key('id')
 
+test_environ = {
+    'VAULT_URL': 'http://localhost',
+    'VAULT_SECRET_PATH': 'secret/mypath',
+    'VAULT_SSL_VERIFY': 'false',
+    'VAULT_ROLE_ID': 'role-id',
+    'VAULT_SECRET_ID': 'secret-id',
+    'VAULT_USERNAME': 'me',
+    'VAULT_PASSWORD': 'youserpass',
+}
+os.environ.update(test_environ)
+
 dirname = os.path.dirname(os.path.abspath(__file__))
 conf = deploy.Command(os.path.join(dirname, 'config.yml'), []).config
 local = conf.local
@@ -135,3 +146,18 @@ class Path(TestCase):
         path.download_file()
         res = path.upload_file()
         self.assertIsInstance(res, dict)
+
+    def test_endpoint_env(self):
+        path = vault.get_endpoint('prodenv')
+        for key, envname in path.items():
+            if key.endswith('_env'):
+                self.assertIn(envname, test_environ)
+                real = path[key.replace('_env', '')]
+                expected = test_environ[envname]
+                if isinstance(real, bool):
+                    if 'true' == expected:
+                        self.assertTrue(real)
+                    else:
+                        self.assertFalse(real)
+                else:
+                    self.assertEqual(real, expected)
