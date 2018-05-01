@@ -1,11 +1,14 @@
 import os
+import sys
 import shutil
 import hvac
 import responses
+from six import StringIO
 from unittest import TestCase
 from pyauto.core import deploy
 from pyauto.core import config
 from pyauto.vault import config as vault_config
+from pyauto.util import diffutil
 config.set_id_key('id')
 
 test_environ = {
@@ -31,12 +34,14 @@ def expect_login():
                   json={'auth': {'client_token': 'abc123'}})
 
 
-def expect_read():
-    with open(os.path.join(dirname, 'key1.txt')) as f1, \
-            open(os.path.join(dirname, 'key2.txt')) as f2:
-        responses.add(responses.GET,
-                      'https://localhost/v1/secret/prod/myenv1',
-                      json={'data': {'key1': f1.read(), 'key2': f2.read()}})
+def expect_read(**data):
+    if not data:
+        with open(os.path.join(dirname, 'key1.txt')) as f1, \
+                open(os.path.join(dirname, 'key2.txt')) as f2:
+            data = {'key1': f1.read(), 'key2': f2.read()}
+    responses.add(responses.GET,
+                  'https://localhost/v1/secret/prod/myenv1',
+                  json={'data': data})
 
 
 def expect_write():
@@ -161,3 +166,64 @@ class Path(TestCase):
                         self.assertFalse(real)
                 else:
                     self.assertEqual(real, expected)
+
+    @responses.activate
+    def test_upload_confirm_diff(self):
+        expect_login()
+        expect_read(key1='def', key2='abc')
+        expect_write()
+        path = vault.get_path('prod_myenv1')
+
+        output = StringIO()
+        stdout_ = sys.stdout
+        sys.stdout = output
+        diffutil.raw_input = lambda _: 'y'
+        path.upload_confirm_diff(plain=True)
+        sys.stdout = stdout_
+        self.assertEqual(output.getvalue().strip(), """
+--- key1 [current]
+
++++ key1 [proposed]
+
+@@ -1 +1 @@
+
+-def
++abc
+--- key2 [current]
+
++++ key2 [proposed]
+
+@@ -1 +1 @@
+
+-abc
++def
+Approved  "key1"
+Approved  "key2"
+        """.strip())
+
+    @responses.activate
+    def test_download_confirm_diff(self):
+        expect_login()
+        expect_read(key1='bc', key2='def')
+        expect_write()
+        path = vault.get_path('prod_myenv1')
+
+        output = StringIO()
+        stdout_ = sys.stdout
+        sys.stdout = output
+        diffutil.raw_input = lambda _: 'n'
+        path.download_confirm_diff(plain=True)
+        sys.stdout = stdout_
+        self.assertEqual(output.getvalue().strip(), """
+--- key1 [current]
+
++++ key1 [proposed]
+
+@@ -1 +1 @@
+
+-abc
++bc
+
+Declined  "key1"
+No Change "key2"
+        """.strip())

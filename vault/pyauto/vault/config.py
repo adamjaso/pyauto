@@ -1,7 +1,7 @@
 import os
 import hvac
 from pyauto.core import config
-from pyauto.util import yamlutil
+from pyauto.util import yamlutil, diffutil
 
 
 class Vault(config.Config):
@@ -107,12 +107,15 @@ class Path(config.Config):
     def save_mapping(self, data):
         if 'mapping' in self:
             filenames = {}
+            result = {}
             for name, filename in self.mapping.items():
-                filenames[name] = filename
-                value = data[name]
-                with open(filename, 'w') as f:
-                    f.write(value)
-            return self.mapping
+                if name in data:
+                    filenames[name] = filename
+                    value = data[name]
+                    with open(filename, 'w') as f:
+                        f.write(value)
+                    result[name] = filename
+            return result
         else:
             data = yamlutil.dump_dict(data, safe_dump=True)
             with open(self.filename, 'w') as f:
@@ -123,13 +126,18 @@ class Path(config.Config):
         result = {}
         if 'mapping' in self:
             for name, filename in self.mapping.items():
-                with open(filename, 'r') as f:
-                    result[name] = f.read()
+                if os.path.isfile(filename):
+                    with open(filename, 'r') as f:
+                        result[name] = f.read()
+                else:
+                    result[name] = ''
             return result
         else:
-            with open(self.filename, 'r') as f:
-                data = yamlutil.load_dict(f.read())
-                return data
+            if os.path.isfile(self.filename):
+                with open(self.filename, 'r') as f:
+                    return yamlutil.load_dict(f.read())
+            else:
+                return {}
 
     def upload_file(self):
         data = self.load_mapping()
@@ -138,6 +146,26 @@ class Path(config.Config):
     def download_file(self):
         res = self.read()
         return self.save_mapping(res['data'])
+
+    def upload_confirm_diff(self, plain=False):
+        res = self.read()
+        tovalues = self.load_mapping()
+        fromvalues = res['data']
+        files = diffutil.Diffs(fromvalues, tovalues)
+        approved = files.show_and_confirm(plain=plain)
+        if len(approved) == 0:
+            return
+        return self.write(**approved)
+
+    def download_confirm_diff(self, plain=False):
+        res = self.read()
+        tovalues = res['data']
+        fromvalues = self.load_mapping()
+        files = diffutil.Diffs(fromvalues, tovalues)
+        approved = files.show_and_confirm(plain=plain)
+        if len(approved) == 0:
+            return
+        return self.save_mapping(approved)
 
 
 config.set_config_class('vault', Vault)
