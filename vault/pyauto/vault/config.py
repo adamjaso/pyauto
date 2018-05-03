@@ -98,7 +98,12 @@ class Path(config.Config):
 
     def read(self):
         client = self.get_endpoint().get_client()
-        return client.read(self.path)
+        res = client.read(self.path)
+        if res is None:
+            res = {}
+        if 'data' not in res:
+            res['data'] = {}
+        return res
 
     def write(self, **data):
         client = self.get_endpoint().get_client()
@@ -151,7 +156,7 @@ class Path(config.Config):
         res = self.read()
         tovalues = self.load_mapping()
         fromvalues = res['data']
-        files = diffutil.Diffs(fromvalues, tovalues)
+        files = diffutil.DictDiff(fromvalues, tovalues)
         approved = files.show_and_confirm(plain=plain)
         if len(approved) == 0:
             return
@@ -161,7 +166,7 @@ class Path(config.Config):
         res = self.read()
         tovalues = res['data']
         fromvalues = self.load_mapping()
-        files = diffutil.Diffs(fromvalues, tovalues)
+        files = diffutil.DictDiff(fromvalues, tovalues)
         approved = files.show_and_confirm(plain=plain)
         if len(approved) == 0:
             return

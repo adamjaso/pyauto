@@ -227,3 +227,37 @@ Approved  "key2"
 Declined  "key1"
 No Change "key2"
         """.strip())
+
+    @responses.activate
+    def test_download_confirm_diff_union(self):
+        expect_login()
+        expect_read(key1='bc')
+        expect_write()
+        path = vault.get_path('prod_myenv1')
+
+        output = StringIO()
+        stdout_ = sys.stdout
+        sys.stdout = output
+        diffutil.raw_input = lambda _: 'n'
+        path.download_confirm_diff(plain=True)
+        sys.stdout = stdout_
+        self.assertEqual(output.getvalue().strip(), """
+--- key1 [current]
+
++++ key1 [proposed]
+
+@@ -1 +1 @@
+
+-abc
++bc
+--- key2 [current]
+
++++ key2 [proposed]
+
+@@ -1 +1 @@
+
+-def
++
+Declined  "key1"
+Declined  "key2"
+        """.strip())
