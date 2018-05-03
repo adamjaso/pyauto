@@ -61,17 +61,17 @@ class Diff(object):
         return 'declined'
 
 
-class Diffs(object):
+class DictDiff(object):
     def __init__(self, fromvalues, tovalues):
-        fromkeys = set(fromvalues.keys())
-        tokeys = set(tovalues.keys())
-        if 0 != len(fromkeys - tokeys):
-            raise Exception(
-                'Incompatible diffs: {0}.'.format(
-                    ', '.join((fromkeys - tokeys) + (tokeys - fromkeys))))
-        self.diffs = [
-            Diff(key, fromvalues[key], tovalues[key])
-            for key in sorted(list(fromkeys))]
+        for k in fromvalues:
+            if k not in tovalues:
+                tovalues[k] = ''
+        for k in tovalues:
+            if k not in fromvalues:
+                fromvalues[k] = ''
+        keys = set(fromvalues.keys()).union(set(tovalues.keys()))
+        self.diffs = [Diff(key, fromvalues[key], tovalues[key])
+                      for key in sorted(keys)]
 
     def show_and_confirm(self, plain=False):
         for diff in self.diffs:

@@ -2,7 +2,7 @@ import sys
 from six import StringIO
 from unittest import TestCase
 from pyauto.util import diffutil as diff_
-from pyauto.util.diffutil import Diff, Diffs
+from pyauto.util.diffutil import Diff, DictDiff
 from collections import OrderedDict
 
 
@@ -34,12 +34,12 @@ class TestDiff(TestCase):
         self.assertEqual(diff.confirm(), 'none')
 
 
-class TestDiffs(TestCase):
+class TestDictDiff(TestCase):
     def test_show_and_confirm(self):
         output = StringIO()
         stdout_ = sys.stdout
         sys.stdout = output
-        diff = Diffs({'abc': '123'}, {'abc': '456'})
+        diff = DictDiff({'abc': '123'}, {'abc': '456'})
         diff_.raw_input = lambda _: 'y'
         self.assertDictEqual(diff.show_and_confirm(plain=True),
                              OrderedDict([('abc', '456')]))
@@ -56,6 +56,9 @@ class TestDiffs(TestCase):
 Approved  "abc"
         """.strip(), output.getvalue().strip())
 
-    def test_show_and_confirm(self):
-        with self.assertRaises(Exception) as context:
-            Diffs({'abc1': '123'}, {'abc2': '456'})
+    def test_union(self):
+        first = {'abc1': '123'}
+        second = {'abc2': '456'}
+        DictDiff(first, second)
+        self.assertEqual(first['abc2'], '')
+        self.assertEqual(second['abc1'], '')
