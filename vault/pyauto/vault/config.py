@@ -47,8 +47,8 @@ class Endpoint(config.Config):
         if 'secret_path' not in self and 'secret_path_env' in self:
             self['secret_path'] = os.getenv(self['secret_path_env'])
         if 'ssl_verify' not in self and 'ssl_verify_env' in self:
-            self['ssl_verify'] = \
-                os.getenv('ssl_verify_env', 'true').strip().lower() == 'true'
+            self['ssl_verify'] = os.getenv(
+                self['ssl_verify_env'], 'true').strip().lower() == 'true'
         if 'role_id' not in self and 'role_id_env' in self:
             self['role_id'] = os.getenv(self['role_id_env'])
         if 'secret_id' not in self and 'secret_id_env' in self:
@@ -160,6 +160,9 @@ class Path(config.Config):
         approved = files.show_and_confirm(plain=plain)
         if len(approved) == 0:
             return
+        for k, v in fromvalues.items():
+            if k not in approved:
+                approved[k] = v
         return self.write(**approved)
 
     def download_confirm_diff(self, plain=False):
@@ -170,6 +173,9 @@ class Path(config.Config):
         approved = files.show_and_confirm(plain=plain)
         if len(approved) == 0:
             return
+        for k, v in fromvalues.items():
+            if k not in approved:
+                approved[k] = v
         return self.save_mapping(approved)
 
 

@@ -1,5 +1,6 @@
 import os
 import sys
+import mock
 import shutil
 import hvac
 import responses
@@ -26,6 +27,14 @@ dirname = os.path.dirname(os.path.abspath(__file__))
 conf = deploy.Command(os.path.join(dirname, 'config.yml'), []).config
 local = conf.local
 vault = conf.vault
+
+
+def yngen(n):
+    for i in range(n):
+        if i % 2 == 0:
+            yield 'y'
+        else:
+            yield 'n'
 
 
 def expect_login():
@@ -261,3 +270,29 @@ No Change "key2"
 Declined  "key1"
 Declined  "key2"
         """.strip())
+
+    @responses.activate
+    def test_download_confirm_diff_declined_and_preserved(self):
+        expect_login()
+        expect_read(key1='bc')
+        expect_write()
+        path = vault.get_path('prod_myenv1')
+
+        gen = yngen(2)
+        diffutil.raw_input = lambda _: next(gen)
+        with mock.patch.object(vault_config.Path, 'save_mapping') as save:
+            path.download_confirm_diff(plain=True)
+            save.assert_called_once_with({'key1': 'bc', 'key2': 'def'})
+
+    @responses.activate
+    def test_upload_confirm_diff_declined_and_preserved(self):
+        expect_login()
+        expect_read(key1='bc', key2='abc')
+        expect_write()
+        path = vault.get_path('prod_myenv1')
+
+        gen = yngen(2)
+        diffutil.raw_input = lambda _: next(gen)
+        with mock.patch.object(vault_config.Path, 'write') as save:
+            path.upload_confirm_diff(plain=True)
+            save.assert_called_once_with(**{'key1': 'abc', 'key2': 'abc'})
