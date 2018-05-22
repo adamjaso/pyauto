@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os
 from unittest import TestCase
+from collections import OrderedDict
 import example.commands as example_commands
 import example.config as example_config
 from pyauto.util import yamlutil
@@ -43,3 +44,6 @@ class TestConfig(TestCase):
         res = config.example_list.get_tag('test')
         self.assertDictEqual(res.to_dict(), {'id': 'test'})
 
+    def test_run_task_function(self):
+        res = config.run_task_function('get_thing,abc')
+        self.assertDictEqual(dict(res), OrderedDict([('id', 'abc')]))

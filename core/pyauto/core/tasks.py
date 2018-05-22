@@ -155,7 +155,6 @@ class Task(object):
             .parse_module_func(self.tasks.task_modules)
         self.name = self.spec.name
         self.args = self.spec.args
-#        self.module, self.func = self.tasks.get_task(self.name)
         self.module = self.spec.module
         self.func = self.spec.func
 

@@ -11,6 +11,10 @@ _config_classes = {}
 _id_key = 'tag'
 
 
+def list_config_classes():
+    return _config_classes.items()
+
+
 class ConfigList(object):
     def __init__(self, items, parent, config_class):
         self.config_class = config_class
@@ -133,6 +137,10 @@ class Config(object):
         if 'tasks' not in self:
             raise Exception('No tasks found. '
                             'The "tasks" attribute is not set.')
+
+    def run_task_function(self, action):
+        task = tasks.Task(self._task_sequences, action)
+        return task.invoke()
 
     def run_task_sequences(self, *actions, **kwargs):
         inspect = kwargs.get('inspect', False)

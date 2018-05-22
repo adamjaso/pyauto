@@ -39,7 +39,7 @@ class Command(TestCase):
     def test_config_inspect(self):
         cmd = deploy.Command.from_args(args=['-c', config_file, '-i'])
         stdout = capture_output(cmd)
-        self.assertEqual(stdout, 'ZXhhbXBsZS5jb21tYW5kcy5kb190aGluZyAoIHRoaW5nX2lkICkKZXhhbXBsZS5jb21tYW5kcy5nZXRfbGlzdCAoIHRoaW5nX2lkICkK')
+        self.assertEqual(stdout, 'ZXhhbXBsZS5jb21tYW5kcy5kb190aGluZyAoIHRoaW5nX2lkICkKZXhhbXBsZS5jb21tYW5kcy5nZXRfbGlzdCAoIHRoaW5nX2lkICkKZXhhbXBsZS5jb21tYW5kcy5nZXRfdGhpbmcgKCB0aGluZ19pZCApCg==')
 
     def test_action_inspect(self):
         cmd = deploy.Command.from_args(args=['-c', config_file, '-i', action])
