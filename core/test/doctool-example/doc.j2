@@ -1,0 +1,40 @@
+{% for module, spec in data.items() %}
+{% if not spec.kinds.config %}
+{% continue %}
+{% endif %}
+# {{ module }}
+
+## Objects
+
+{% for member in spec.kinds.config %}
+
+### {{ member.fullname }}
+
+##### Properties
+
+| Name | Description |
+| --- | --- |
+{% for prop in member.properties %}
+| {{ prop.name }} | {{ prop.description }} |
+{% endfor %}
+
+##### Resources
+
+| Name | Full Name | Description |
+| --- | --- | --- |
+{% for res in member.resources %}
+| {{ member.config_key }}/{{ res.name }}{{ res.argstring }} | {{ member.name }}.{{ res.name }} | {{ res.description }} |
+{% endfor %}
+
+##### Class Methods
+
+| Name | Description |
+| --- | --- |
+{% for method in member.classmethods %}
+| {{ member.name }}.{{ method.name }}{{ method.argstring }} | {{ method.description }} |
+{% endfor %}
+
+{% endfor %}
+
+{% endfor %}
+
