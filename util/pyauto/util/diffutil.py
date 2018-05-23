@@ -1,6 +1,7 @@
 import os
 import sys
 import difflib
+from six.moves import input as raw_input
 from collections import OrderedDict
 
 try:
