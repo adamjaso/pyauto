@@ -230,6 +230,30 @@ class LocalVariable(TestCase):
                 data = var.get_function()
                 self.assertEqual(data, 'foo')
 
+    def test_get_default(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config_no_filename')
+        for var in template.variables:
+            if 'map' in var:
+                data = var.get_map()
+                self.assertDictEqual(data, {'abc': 123})
+
+    def test_get_string(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config_no_filename')
+        for var in template.variables:
+            if 'string' in var:
+                data = var.get_value()
+                self.assertDictEqual(data, {'abc': 123})
+
+    def test_run_task(self):
+        dest = local.get_destination('abc')
+        template = dest.get_template('project_config_no_filename')
+        for var in template.variables:
+            if 'task' in var:
+                data = var.run_task()
+                self.assertDictEqual(data, {'abc': 123})
+
     def test_get_value(self):
        dest = local.get_destination('abc')
        template = dest.get_template('project_config_no_filename')

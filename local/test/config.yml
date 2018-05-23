@@ -44,6 +44,12 @@ local:
       - resource: local/get_destination,abc
         select: templates[0].filename
         name: abc_filename
+      - map:
+          abc: 123
+      - string: '{abc: 123}'
+        parse: yaml
+      - task: get_thing
 task_modules:
 - pyauto.local.commands
+- example
 tasks: {}

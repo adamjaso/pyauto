@@ -1,6 +1,9 @@
-import os, shutil, jmespath
+import os
+import json
+import shutil
+import jmespath
 from collections import OrderedDict
-from pyauto.core import config
+from pyauto.core import config, tasks
 from pyauto.util import strutil, funcutil, yamlutil
 from pyauto.util.j2util import get_template_renderer
 
@@ -141,7 +144,7 @@ class Template(config.Config):
         else:
             raise Exception('No filename found to make destination '
                             'filename for template {0}'
-                            .format(template.get_id()))
+                            .format(self.get_id()))
 
     def get_context(self, **context):
         context = self.variables.get_context(context)
@@ -152,9 +155,11 @@ class Template(config.Config):
     def render_template(self, **context):
         context = self.get_context(**context)
         if isinstance(self.config, Destination):
-            return self.config.config.render_template(self.template_filename, **context)
+            return self.config.config.render_template(
+                self.template_filename, **context)
         else:
-            return self.config.render_template(self.template_filename, **context)
+            return self.config.render_template(
+                self.template_filename, **context)
 
 
 class VariableList(object):
@@ -196,6 +201,12 @@ class Variable(config.Config):
             value = self.get_file()
         elif self.function:
             value = self.get_function()
+        elif self.task is not None:
+            value = self.run_task()
+        elif self.map is not None:
+            value = self.get_map()
+        elif self.string is not None:
+            value = self.string
         else:
             raise Exception('unknown variable type: {0}'.format(self))
         if value is None:
@@ -235,6 +246,16 @@ class Variable(config.Config):
 
     def get_function(self):
         return funcutil.Function(self.function).run()
+
+    def get_map(self):
+        return self.map
+
+    def run_task(self):
+        if isinstance(self.config.config, Destination):
+            config = self.config.config.config.config
+        else:
+            config = self.config.config
+        return config.run_task_function(self.task)
 
 
 config.set_config_class('local', Local)
