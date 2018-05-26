@@ -1,4 +1,4 @@
-.PHONY: py3 py2 deps3 deps2 deps3-dev deps2-dev test3 test2 test deps deploy
+.PHONY: py3 py2 deps3 deps2 deps3-dev deps2-dev test3 test2 test deps deploy docs
 
 py3:
 	[[ ! -d env3 ]] && virtualenv -p python3 env3 || :
@@ -28,5 +28,8 @@ deps: deps3-dev deps2-dev
 
 test: test3 test2
 
-deploy: test
+deploy: test docs
 	python setup.py sdist upload -r https://upload.pypi.org/legacy/
+
+docs:
+	pandoc --from=markdown --to=rst --output=README.rst README.md
