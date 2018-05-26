@@ -63,7 +63,7 @@ class Member(object):
                 ('module', self.module.__name__),
                 ('kind', 'command'),
                 ('fullargstring', argstr),
-                ('argstring', re.sub('^\(config, ', '(', argstr)),
+                ('argstring', re.sub('^\(config(, )?', '(', argstr)),
                 ('description', getdoc(self.member)),
             ])
 
@@ -98,8 +98,7 @@ class Member(object):
         for name, prop in class_attrs.items():
             if inspect.isfunction(prop) and not name.startswith('_'):
                 argspec = inspect.getargspec(prop)
-                is_resource = len(argspec[0]) > 1 or \
-                        argspec.varargs is not None
+                is_resource = self.config_key is not None
                 argstr = inspect.formatargspec(*argspec)
                 yield OrderedDict([
                     ('name', name),
@@ -119,8 +118,7 @@ class Member(object):
                 break
         else:
             self.config_key = None
-        return sorted(self.get_class_docs(),
-                                  key=lambda doc: doc['name'])
+        return sorted(self.get_class_docs(), key=lambda doc: doc['name'])
 
     def get_class_attributes(self):
         cls = self.member
@@ -162,7 +160,7 @@ class Module(object):
         commands = sorted(commands, key=lambda c: c['fullname'])
         return OrderedDict([
             ('name', module.__name__),
-            ('module', self.module.__name__),
+            ('module', module.__name__),
             ('description', getdoc(module)),
             ('members', commands),
         ])
@@ -179,48 +177,111 @@ class Module(object):
         return res
 
 
-def aggregate_results(data):
-    kinds = OrderedDict()
-    modules = OrderedDict()
+def aggregate_results(data, metadata):
+    metadata = metadata or {}
+    packages = OrderedDict()
     for module_name, module_spec in data.items():
-        mspec = deepcopy(module_spec)
-        del mspec['members']
-        modules[module_name] = mspec
+        package_name = parse_package_name(module_name)
+        if package_name not in packages:
+            packages[package_name] = OrderedDict([
+                ('id', package_name),
+                ('name', package_name),
+                ('description', None),
+                ('modules', []),
+                ('commands', []),
+                ('helperfunctions', []),
+                ('resources', []),
+                ('configs', []),
+                ('missing_descriptions', [])
+            ])
+        package = packages[package_name]
+        package_description = metadata.get(package_name)
+        if not package_description:
+            package['missing_descriptions'].append(package_name)
+        else:
+            package['description'] = package_description
+        package['modules'].append(OrderedDict([
+            ('id', module_name),
+            ('package', package_name),
+            ('description', module_spec['description']),
+        ]))
+        if not module_spec['description']:
+            package['missing_descriptions'].append(module_name)
         for member in module_spec['members']:
-            if member['kind'] not in kinds:
-                kinds[member['kind']] = []
-            if member['kind'] == 'config':
-                member['resources'] = [
-                    deepcopy(m) for m in member['classmethods']
-                    if m['resource']]
-            kinds[member['kind']].append(member)
-    for kind, members in kinds.items():
-        kinds[kind] = sorted(kinds[kind], key=lambda k: k['fullname'])
-    return OrderedDict([
-        ('kinds', kinds),
-        ('modules', modules)
-    ])
-
-
-def aggregate_per_module(data):
-    results = OrderedDict()
-    for module_name, module_spec in data.items():
-        results[module_name] = aggregate_results({module_name: module_spec})
-    return results
-
-
-def merge_config_docs(docs, results):
-    for module_name, spec in  results.items():
-        if 'config' in spec['kinds']:
-            for member in spec['kinds']['config']:
-                properties = docs['config'].get(member['fullname'], [])
+            if not member['description']:
+                package['missing_descriptions'].append(
+                    '.'.join([module_name, member['name']]))
+            if 'command' == member['kind']:
+                package['commands'].append(OrderedDict([
+                    ('id', '.'.join([module_name, member['name']])),
+                    ('name', member['name']),
+                    ('module', module_name),
+                    ('kind', member['kind']),
+                    ('fullargstring', member['fullargstring']),
+                    ('argstring', member['argstring']),
+                    ('description', member['description']),
+                ]))
+            elif 'helperfunction' == member['kind']:
+                package['helperfunctions'].append(OrderedDict([
+                    ('id', '.'.join([module_name, member['name']])),
+                    ('name', member['name']),
+                    ('module', module_name),
+                    ('kind', member['kind']),
+                    ('argstring', member['argstring']),
+                    ('description', member['description']),
+                ]))
+            elif 'config' == member['kind']:
+                config = OrderedDict([
+                    ('id', '.'.join([module_name, member['name']])),
+                    ('name', member['name']),
+                    ('module', module_name),
+                    ('kind', member['kind']),
+                    ('config_key', member['config_key']),
+                    ('description', member['description']),
+                    ('properties', []),
+                    ('methods', [])
+                ])
+                package['configs'].append(config)
+                properties = metadata.get(config['id'])
                 if isinstance(properties, (dict, OrderedDict)):
-                    properties = [
-                        OrderedDict([
+                    for name, description in properties.items():
+                        config['properties'].append(OrderedDict([
                             ('name', name),
-                            ('description', value)])
-                        for name, value in properties.items()]
-                member['properties'] = properties
+                            ('description', description)
+                        ]))
+                elif isinstance(properties, list):
+                    config['properties'].extend(properties)
+                for method in member['classmethods']:
+                    if not method['description']:
+                        package['missing_descriptions'].append(
+                            '.'.join([config['id'], method['name']]))
+                    config['methods'].append(OrderedDict([
+                        ('name', method['name']),
+                        ('kind', 'configmethod'),
+                        ('resource', method['resource']),
+                        ('argstring', method['argstring']),
+                        ('description', method['description']),
+                    ]))
+                    if method['resource']:
+                        package['resources'].append(OrderedDict([
+                            ('id', '.'.join([config['id'], method['name']])),
+                            ('config', method['class']),
+                            ('config_key', config['config_key']),
+                            ('name', method['name']),
+                            ('kind', 'resource'),
+                            ('resource', method['resource']),
+                            ('argstring', method['argstring']),
+                            ('description', method['description']),
+                        ]))
+    return packages
+
+
+def parse_package_name(name):
+    parts = name.split('.')
+    if len(parts) <= 1:
+        return name
+    else:
+        return '.'.join(parts[:-1])
 
 
 def main():
@@ -233,7 +294,7 @@ def main():
     args = argparse.ArgumentParser()
     args.add_argument('-t', '--template', dest='template', default=None)
     args.add_argument('-o', '--output', dest='output', default='-')
-    args.add_argument('--merge-docs', dest='merge_docs', default=None)
+    args.add_argument('--metadata', dest='metadata', default=None)
     args.add_argument('--aggregate', dest='aggregate', action='store_true')
     args.add_argument('--format', dest='format',
                       choices=['yaml', 'json'], default='yaml')
@@ -246,14 +307,13 @@ def main():
         data.update(pkg.extract_commands())
 
     if args.aggregate:
-        data = aggregate_per_module(data)
-
-        if args.merge_docs:
-            docs_path = os.path.abspath(args.merge_docs)
+        if args.metadata:
+            docs_path = os.path.abspath(args.metadata)
             with open(docs_path) as f:
-                docs = yamlutil.load_dict(f)
-            merge_config_docs(docs, data)
-
+                metadata = yamlutil.load_dict(f)
+        else:
+            metadata = None
+        data = aggregate_results(data, metadata)
 
     if args.template:
         data = template.render_file(args.template, data=data)

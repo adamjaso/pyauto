@@ -1,0 +1,55 @@
+{% for pkg_name, pkg in data.items() %}
+# {{ pkg_name }}
+
+## Commands
+
+| ID | Name | Description |
+| --- | --- | --- |
+{% for cmd in pkg.commands %}
+| {{ cmd.id }} | {{ cmd.name }}{{ cmd.argstring }} | {{ cmd.description|replace('\n', ' ') }} |
+{% endfor %}
+
+{% if pkg.helperfunctions %}
+## Helper Functions
+
+| ID | Name | Description |
+| --- | --- | --- |
+{% for func in pkg.helperfunctions %}
+| {{ func.id }} | {{ func.name }}{{ func.fullargstring }} | {{ func.description|replace('\n', ' ') }} |
+{% endfor %}
+
+{% endif %}
+## Objects
+
+{% for config in pkg.configs %}
+### {{ config.id }}
+
+##### Properties
+
+| Name | Description |
+| --- | --- |
+{% for prop in config.properties %}
+| {{ prop.name }} | {{ prop.description|replace('\n', ' ') }} |
+{% endfor %}
+
+##### Config Methods
+
+| Name | Description |
+| --- | --- |
+{% for method in config.methods %}
+| {{ config.name }}.{{ method.name }}{{ method.argstring }} | {{ method.description|replace('\n', ' ') }} |
+{% endfor %}
+
+{% endfor %}
+
+{% if pkg.resources %}
+##### Resources
+
+| ID | Name | Description |
+| --- | --- | --- |
+{% for res in pkg.resources %}
+| {{ res.id }} | {{ res.config_key }}/{{ res.name }}{{ res.argstring }} | {{ res.description|replace('\n', ' ') }} |
+{% endfor %}
+{% endif %}
+
+{% endfor %}
