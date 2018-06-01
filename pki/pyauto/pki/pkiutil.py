@@ -12,6 +12,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.asymmetric import rsa, dh
 from cryptography.hazmat.primitives.serialization import load_pem_private_key, Encoding
+from . import sshutil
 
 
 BEGIN_DH_PARAMS = '-----BEGIN DH PARAMETERS-----'
@@ -19,8 +20,6 @@ END_DH_PARAMS = '-----END DH PARAMETERS-----'
 
 
 def dh_decode(pemstr):
-#    if six.PY3:
-#        pemstr = six.text_type(pemstr)
     pemstr = pemstr.strip().split('\n')
     if BEGIN_DH_PARAMS != pemstr[0]:
         raise Exception('Invalid PEM begin')
@@ -41,8 +40,9 @@ def dh_encode(p, g):
     enc64 = b64encode(derstr)
     parts = [BEGIN_DH_PARAMS]
     for i in range(0, len(enc64), 64):
+        row = enc64[i:i+64]
         if six.PY3:
-            row = enc64[i:i+64].decode('ascii')
+            row = row.decode('ascii')
         parts.append(row)
     parts.append(END_DH_PARAMS)
     parts = os.linesep.join(parts)
@@ -181,6 +181,12 @@ class RSAPubKey(object):
             return self.pem
         else:
             return six.text_type(self.pem.decode('ascii'))
+
+    def get_ssh_str(self, comment=None):
+        numbers = self._rsa.public_numbers()
+        pk = sshutil.SshRsaPubKey(comment=comment)
+        pk.keydata = sshutil.Keydata(exp=numbers.e, modulus=numbers.n)
+        return pk.encode()
 
     def _assert_file(self):
         if self.key_file is None:

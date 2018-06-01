@@ -6,7 +6,7 @@ from unittest import TestCase
 from pyauto.core import __version__
 from pyauto.core import deploy, config as pyauto_config
 from pyauto.pki import config, pkiutil
-from test_pkiutil import *
+#from test_pkiutil import *
 pyauto_config.set_id_key('id')
 
 

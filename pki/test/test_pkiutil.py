@@ -22,6 +22,7 @@ rsa_example_file = os.path.join(dirname, 'samples/rsa.pem')
 rsa_enc_example_file = os.path.join(dirname, 'samples/rsa_enc.pem')
 rsa_pkcs1_example_file = os.path.join(dirname, 'samples/rsa_pkcs1.pem')
 rsa_pub_example_file = os.path.join(dirname, 'samples/rsa.pub')
+rsa_ssh_pub_example_file = os.path.join(dirname, 'samples/ssh-rsa.pub')
 rsa_saved_example_file = os.path.join(dirname, 'saved_example_rsa.pem')
 rsa_enc_saved_example_file = os.path.join(dirname, 'saved_example_rsa_enc.pem')
 rsa_pkcs1_saved_example_file = os.path.join(
@@ -29,6 +30,7 @@ rsa_pkcs1_saved_example_file = os.path.join(
 rsa_pub_saved_example_file = os.path.join(dirname, 'saved_example_rsa.pub')
 rsa_example = open(rsa_example_file).read()
 rsa_pub_example = open(rsa_pub_example_file).read()
+rsa_ssh_pub_example = open(rsa_ssh_pub_example_file).read()
 rsa_pkcs1_example = open(rsa_pkcs1_example_file).read()
 rsa_pub_example = open(rsa_pub_example_file).read()
 cleanup_files.append(rsa_saved_example_file)
@@ -171,10 +173,15 @@ class RSAPubKey(BaseTestCase):
         self.assertEqual(pubkey.pem_str.strip(), rsa_pub_example.strip())
 
     def test_rsa_pub_load(self):
-        pubkey = pkiutil.RSAPubKey()\
-                .set_file(rsa_pub_example_file)
+        pubkey = pkiutil.RSAPubKey().set_file(rsa_pub_example_file)
         pubkey.load()
         self.assertEqual(pubkey.pem_str.strip(), rsa_pub_example.strip())
+
+    def test_rsa_ssh_str(self):
+        pubkey = pkiutil.RSAPubKey().set_file(rsa_pub_example_file)
+        pubkey.load()
+        sshpubkey = pubkey.get_ssh_str('samples/ssh-rsa.pub')
+        self.assertEqual(sshpubkey.strip(), rsa_ssh_pub_example.strip())
 
 
 class CSR(BaseTestCase):

@@ -1,6 +1,2 @@
--e ../core
--e ../local
--e ../util
-cryptography
-PyCrypto
 six
+nose2
