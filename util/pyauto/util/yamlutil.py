@@ -35,13 +35,13 @@ def load_dict(stream, **kwargs):
         yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping)
     if kwargs.get('safe_load_all', False):
         del kwargs['safe_load_all']
-        return yaml.safe_load_all(stream, OrderedLoader)
+        return yaml.safe_load_all(stream)
     elif kwargs.get('safe_load', False):
         del kwargs['safe_load']
-        return yaml.safe_load(stream, OrderedLoader)
-    elif kwargs.get('dump_all', False):
-        del kwargs['dump_all']
-        return yaml.dump_all(stream, OrderedLoader)
+        return yaml.safe_load(stream)
+    elif kwargs.get('load_all', False):
+        del kwargs['load_all']
+        return yaml.load_all(stream, Loader=OrderedLoader)
     else:
         return yaml.load(stream, OrderedLoader)
 

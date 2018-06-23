@@ -138,6 +138,13 @@ class TestDumpDict(TestCase):
         self.assertEqual(sample_all_yaml, data.strip())
 
 
+class TestLoadDict(TestCase):
+    def test_load_all(self):
+        res = yamlutil.load_dict(sample_all_yaml, load_all=True)
+        res = [i for i in res]
+        self.assertListEqual(res, sample_all)
+
+
 class TestBlockValues(TestCase):
     def test_dump_block_value(self):
         res = yamlutil.dump_dict(sample_block_dict).strip()
