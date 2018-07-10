@@ -1,14 +1,14 @@
 import os
 from collections import OrderedDict
 from unittest import TestCase
-import example.commands as example_commands
-import example.config as example_config
+import test.example.commands as example_commands
+import test.example.config as example_config
 from pyauto.core import tasks as pyauto_tasks, config as pyauto_config
 
 
-test_example_commands = 'example.commands'
+test_example_commands = 'test.example.commands'
 test_example_func_name = 'do_thing'
-test_example_module_func_name = 'example.commands.do_thing'
+test_example_module_func_name = 'test.example.commands.do_thing'
 task_seq_name = 'do_things'
 config_file = os.path.join(
         os.path.dirname(os.path.abspath(__file__)),
@@ -150,7 +150,7 @@ class TestTask(TestCase):
                 get_config())
         task = pyauto_tasks.Task(tasks, 'do_thing,abc')
         self.assertEqual(task.module_func_name,
-                         'example.commands.do_thing')
+                         'test.example.commands.do_thing')
 
     def test_module_func_name_with_shlex(self):
         tasks = pyauto_tasks.TaskSequences(
@@ -159,9 +159,9 @@ class TestTask(TestCase):
                 get_config())
         pyauto_tasks.TaskSpec.set_parser(
             pyauto_tasks.TaskSpec.parse_command_format)
-        task = pyauto_tasks.Task(tasks, 'example.commands.do_thing abc')
+        task = pyauto_tasks.Task(tasks, 'test.example.commands.do_thing abc')
         self.assertEqual(task.module_func_name,
-                         'example.commands.do_thing')
+                         'test.example.commands.do_thing')
         pyauto_tasks.TaskSpec.set_parser(None)
 
     def test_module_func_args(self):
@@ -171,7 +171,7 @@ class TestTask(TestCase):
                 get_config())
         task = pyauto_tasks.Task(tasks, 'do_thing,abc')
         self.assertEqual(task.module_func_args,
-                         'example.commands.do_thing ( abc )')
+                         'test.example.commands.do_thing ( abc )')
 
     def test_invoke(self):
         config_dict = get_config_dict()

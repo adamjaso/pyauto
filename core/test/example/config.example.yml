@@ -8,7 +8,7 @@ example2: {}
 example_list:
 - id: test
 task_modules:
-- example.commands
+- test.example.commands
 tasks:
   do_things:
   - do_thing,thing1
