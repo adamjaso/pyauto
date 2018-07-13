@@ -39,6 +39,9 @@ class TaskSequenceArguments(object):
         """
         results = []
         for name, kind in self.items():
+            if not isinstance(args, (dict, OrderedDict)):
+                raise InvalidTaskSequenceInvocationException(
+                    'Invalid task sequence args: {0}'.format(args))
             result = self._repo.query({kind.name: args.get(name, [])},
                                       **options)
             if 'id' in options and 'tag' in options:
@@ -74,7 +77,13 @@ class TaskSequences(object):
     def repo(self):
         return self._repo
 
+    def has(self, item):
+        return item in self
+
     def get(self, item):
+        if not self.has(item):
+            raise UnknownTaskSequenceException('Unknown task sequence: {0}'
+                                               .format(item))
         return self._tasks.get(item)
 
     def __getitem__(self, item):
@@ -149,6 +158,14 @@ class TaskSequence(object):
 class Repository(object):
     def __init__(self):
         self._data = OrderedDict()
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def kinds(self):
+        return [k.kind for k in self._data.values()]
 
     def query(self, match, **options):
         if options.get('id', False):
@@ -232,12 +249,12 @@ class Repository(object):
         return False
 
     def add(self, obj):
-        if not isinstance(obj, KindObject):
-            obj = deepcopy(obj)
-            obj = KindObject(self, obj)
-        obj.set_repo(self)
-        self.assert_kind(obj.kind.name)
-        self._data[obj.kind.name].add(obj)
+        if not isinstance(obj, (dict, OrderedDict)) or 'kind' not in obj:
+            raise InvalidKindObjectException('Invalid kind object: {0}'
+                                             .format(obj))
+        kind_name = obj['kind']
+        self.assert_kind(kind_name)
+        self._data[kind_name].add(obj)
         return self
 
     def remove(self, obj):
@@ -419,7 +436,7 @@ class Kind(object):
 
     def get_class(self):
         if 'class' not in self:
-            return Config
+            return KindObject
         parts = self['class'].split('.')
         module_name = '.'.join(parts[:-1])
         class_name = parts[-1]
@@ -427,10 +444,13 @@ class Kind(object):
         return getattr(module, class_name)
 
     def wrap_object(self, obj):
-        return self.get_class()(obj)
+        return self.get_class()(self._repo, obj)
 
     def get_module(self):
         return importlib.import_module(self['module'])
+
+    def has_module(self):
+        return 'module' in self
 
 
 class KindTasks(object):
@@ -523,6 +543,10 @@ class KindObjects(object):
         self._kind = kind
         self._items = OrderedDict()
 
+    @property
+    def data(self):
+        return self._items
+
     def query(self, tags, **options):
         for item in self._items.values():
             if not tags or item.tag in tags:
@@ -543,7 +567,7 @@ class KindObjects(object):
 
     def add(self, obj):
         if not isinstance(obj, KindObject):
-            obj = KindObject(self._repo, obj)
+            obj = self.kind.wrap_object( obj)
         if obj.tag in self._items:
             raise DuplicateObjectException(kind_tag=obj.get_id())
         self._items[obj.tag] = obj
@@ -577,7 +601,7 @@ class KindObject(object):
     def __init__(self, repo, obj):
         self._repo = repo
         self._kind = repo.get_kind(obj['kind'])
-        self._data = self._kind.wrap_object(obj)
+        self._data = obj
 
     @property
     def tag(self):
@@ -590,6 +614,10 @@ class KindObject(object):
     @property
     def data(self):
         return self._data
+
+    @property
+    def data_(self):
+        return self.data.data
 
     def validate(self):
         self._kind.validate_object(self._data)
@@ -607,7 +635,7 @@ class KindObject(object):
         return self._data.get(item)
 
     def __setitem__(self, item, value):
-        self._data.set(item, value)
+        self._data[item] = value
 
     def items(self):
         return self._data.items()
@@ -622,44 +650,6 @@ class KindObject(object):
         if len(kwargs) > 0:
             args = {args: kwargs}
         return self._kind.tasks.invoke(self, args)
-
-
-class Config(object):
-    def __init__(self, data):
-        self._data = data
-
-    def __iter__(self):
-        return iter(self.keys())
-
-    def __len__(self):
-        return len(self._data)
-
-    def __getattr__(self, item):
-        return self.get(item)
-
-    def __getitem__(self, item):
-        return self.get(item)
-
-    def __setitem__(self, item, value):
-        self.set(item, value)
-
-    def __contains__(self, item):
-        return item in self._data
-
-    def get(self, item, default=None):
-        return self._data.get(item, default)
-
-    def set(self, item, value):
-        self._data[item] = value
-
-    def keys(self):
-        return self._data.keys()
-
-    def values(self):
-        return self._data.values()
-
-    def items(self):
-        return self._data.items()
 
 
 class PyautoException(Exception):
@@ -696,6 +686,10 @@ class UnknownKindObjectException(PyautoException):
         super(UnknownKindObjectException, self).__init__(msg)
 
 
+class InvalidKindObjectException(PyautoException):
+    pass
+
+
 class InvalidKindObjectReferenceException(PyautoException):
     def __init__(self, tag):
         msg = 'Invalid object tag: {0}'.format(tag)
@@ -709,6 +703,10 @@ class InvalidKindDefinitionException(PyautoException):
 
 
 class UnknownTaskSequenceTypeException(PyautoException):
+    pass
+
+
+class UnknownTaskSequenceException(PyautoException):
     pass
 
 

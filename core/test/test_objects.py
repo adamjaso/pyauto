@@ -168,7 +168,7 @@ test_object = {
 }
 
 
-class TestKind(objects.Config):
+class TestKind(objects.KindObject):
     pass
 
 
@@ -289,6 +289,10 @@ class Repository(TestCase):
         self.repo = objects.Repository()
         self.repo.load_kinds(kinds_)
         self.repo.load_objects(objects_)
+
+    def test_kinds(self):
+        for k in self.repo.kinds:
+            self.assertIsInstance(k, objects.Kind)
 
     def test_query_objs(self):
         objs = self.repo.query({'test.Directory': []}, resolve=True)
@@ -584,9 +588,6 @@ class KindObject(TestCase):
     def test_kind(self):
         self.assertEqual(self.obj.kind, self.kind)
 
-    def test_data(self):
-        self.assertIsInstance(self.obj.data, objects.Config)
-
     def test_validate(self):
         self.obj.validate()
 
@@ -598,6 +599,3 @@ class KindObject(TestCase):
         self.obj['key'] = 'abc'
         self.assertEqual(self.obj._data['key'], 'abc')
 
-
-class Config(TestCase):
-    pass
