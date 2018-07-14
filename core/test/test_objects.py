@@ -153,7 +153,7 @@ test_kind = {
         'name': 'string',
     },
     'relations': {
-        'source': 'local.Directory',
+#        'source': 'test.Directory',
     },
     'tasks': {
         '_test_task',
@@ -375,32 +375,85 @@ class Reference(TestCase):
             objects.Reference(None)
 
 
-class KindDefinition(TestCase):
+class KindAttributeDetail(TestCase):
+    def setUp(self):
+        self.r = objects.Repository()
+        self.r.load_kinds(kinds_)
+
     def test_init(self):
-        def_ = objects.KindDefinition('test.Directory')
-        self.assertEqual(def_.name, 'test.Directory')
+        def_ = objects.KindAttributeDetail(self.r, 'sources', 'test.Directory')
+        self.assertEqual(def_.name, 'sources')
+        self.assertEqual(def_.kind, 'test.Directory')
         self.assertTrue(def_.required)
         self.assertFalse(def_.list)
 
     def test_optional(self):
-        def_ = objects.KindDefinition('test.Directory optional')
-        self.assertEqual(def_.name, 'test.Directory')
+        def_ = objects.KindAttributeDetail(self.r, 'sources',
+                                      'test.Directory optional')
+        self.assertEqual(def_.name, 'sources')
+        self.assertEqual(def_.kind, 'test.Directory')
         self.assertFalse(def_.required)
         self.assertFalse(def_.list)
 
     def test_list(self):
-        def_ = objects.KindDefinition('test.Directory list')
-        self.assertEqual(def_.name, 'test.Directory')
+        def_ = objects.KindAttributeDetail(self.r, 'sources',
+                                      'test.Directory list')
+        self.assertEqual(def_.name, 'sources')
+        self.assertEqual(def_.kind, 'test.Directory')
         self.assertTrue(def_.required)
         self.assertTrue(def_.list)
 
+    def test_optional_list(self):
+        def_ = objects.KindAttributeDetail(self.r, 'sources',
+                                      'test.Directory optional list')
+        self.assertEqual(def_.name, 'sources')
+        self.assertEqual(def_.kind, 'test.Directory')
+        self.assertFalse(def_.required)
+        self.assertTrue(def_.list)
 
-class AttributeDefinition(TestCase):
+    def test_get_attribute_list(self):
+        ok2 = deepcopy(test_kind)
+        ok2['relations'] = {'sources': 'test.TestKind list'}
+        to2 = deepcopy(test_object)
+        to2['tag'] += '2'
+        to2['sources'] = [test_object['tag']]
+        self.r.add_kind(ok2)
+        self.r.add(test_object)
+        self.r.add(to2)
+
+        def_ = objects.KindAttributeDetail(self.r, 'sources',
+                                      'test.TestKind optional list')
+        value = def_.get_attribute(to2)
+        for item in value:
+            self.assertIsInstance(item, TestKind)
+
+    def test_get_attribute(self):
+        ok2 = deepcopy(test_kind)
+        ok2['relations'] = {'sources': 'test.TestKind'}
+        to2 = deepcopy(test_object)
+        to2['tag'] += '2'
+        self.r.add_kind(ok2)
+
+        def_ = objects.KindAttributeDetail(self.r, 'sources',
+                                      'test.TestKind')
+        self.r.add(test_object)
+        to2_ = self.r.add(to2)
+        print(to2_, to2)
+        with self.assertRaises(objects.KindObjectAttributeException):
+            def_.get_attribute(to2)
+        self.r.remove(to2_)
+        to2['sources'] = test_object['tag']
+        self.r.add(to2)
+        value = def_.get_attribute(to2)
+        self.assertIsInstance(value, TestKind)
+
+
+class AttributeDetail(TestCase):
     def setUp(self):
         self.r = objects.Repository()
         self.r.add_kind(test_kind)
         kind = self.r.get_kind('test.TestKind')
-        self.def_ = objects.AttributeDefinition(kind, 'name', 'string optional')
+        self.def_ = objects.AttributeDetail(kind, 'name', 'string optional')
 
     def test_init(self):
         pass

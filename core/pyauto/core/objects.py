@@ -34,9 +34,6 @@ class TaskSequenceArguments(object):
             yield self[i]
 
     def resolve(self, args, **options):
-        """
-        login: {dep:[na1],app:[web]}
-        """
         results = []
         for name, kind in self.items():
             if not isinstance(args, (dict, OrderedDict)):
@@ -254,8 +251,7 @@ class Repository(object):
                                              .format(obj))
         kind_name = obj['kind']
         self.assert_kind(kind_name)
-        self._data[kind_name].add(obj)
-        return self
+        return self._data[kind_name].add(obj)
 
     def remove(self, obj):
         self.assert_kind(obj.kind.name)
@@ -270,7 +266,7 @@ class Repository(object):
         for kind in data:
             self.add_kind(kind)
         for kindobjs in self._data.values():
-            kindobjs.kind.load_relations()
+            kindobjs.kind.validate_relations()
         return self
 
     def parse_objects(self, data):
@@ -297,31 +293,54 @@ class Reference(object):
             self.tag = parts[1]
 
 
-class KindDefinition(object):
+class KindAttributeDetail(object):
+    repo = None
+    kind = None
     name = None
     required = True
     list = False
 
-    def __init__(self, key):
+    def __init__(self, repo, name, key):
         if not isinstance(key, six.string_types):
-            raise InvalidKindDefinitionException(key)
+            raise InvalidKindAttributeDetailException(key)
+        self.repo = repo
+        self.name = name
         parts = re.split('\s+', key)
         for i, part in enumerate(parts):
             if 0 == i:
-                self.name = part
+                self.kind = part
             elif 'optional' == part:
                 self.required = False
             elif 'list' == part:
                 self.list = True
 
     def __str__(self):
-        return self.name
+        return self.kind #': '.join([self.name, self.kind])
 
     def __repr__(self):
-        return self.name
+        return self.__str__()
+
+    def get_attribute(self, obj):
+        if self.name not in obj:
+            if self.required:
+                raise KindObjectAttributeException(
+                    'Required attribute not found: {0}.{1}'
+                    .format(self.kind, self.name))
+            elif self.list:
+                return []
+            else:
+                return None
+        value = obj[self.name]
+        if self.list:
+            if not isinstance(value, list):
+                raise KindObjectAttributeException(
+                    'Invalid attribute type: {0}'.format(type(value)))
+            return [self.repo[self.kind][tag] for tag in value]
+        else:
+            return self.repo[self.kind][value]
 
 
-class AttributeDefinition(object):
+class AttributeDetail(object):
     parsers = {
         'string': six.text_type,
         'path': os.path.abspath,
@@ -382,17 +401,16 @@ class AttributeDefinition(object):
 class Kind(object):
     def __init__(self, repo, kind):
         self._repo = repo
-        self._kind = KindDefinition(kind['kind'])
+        self._kind = kind['kind'] #KindAttributeDetail(kind['kind'])
         kind['attributes'] = OrderedDict([
-            (name, AttributeDefinition(self, name, a))
+            (name, AttributeDetail(self, name, a))
             for name, a in kind.get('attributes', {}).items()
         ])
-        kind['relations'] = OrderedDict([
-            (name, KindDefinition(k))
+        self._data = kind
+        self._relations = OrderedDict([
+            (name, KindAttributeDetail(repo, name, k))
             for name, k in kind.get('relations', {}).items()
         ])
-        self._data = kind
-        self._relations = None
         self._tasks = KindTasks(self, kind.get('tasks', []))
 
     @property
@@ -402,6 +420,10 @@ class Kind(object):
     @property
     def tasks(self):
         return self._tasks
+
+    @property
+    def relations(self):
+        return self._relations
 
     def set_repo(self, repo):
         self._repo = repo
@@ -422,16 +444,18 @@ class Kind(object):
     def __contains__(self, item):
         return item in self._data
 
-    def load_relations(self):
+    def validate_relations(self):
         self._relations = OrderedDict([
             (name, self._repo.get_kind(kind))
-            for name, kind in self._data['relations'].items()
+            for name, kind in self._relations.items()
         ])
         return self
 
     def validate_object(self, obj):
         for name, attr in self._data['attributes'].items():
             obj[name] = attr.get_attribute(obj)
+        for name, kdef in self._data['relations'].items():
+            obj[name] = kdef.get_attribute(obj)
         return obj
 
     def get_class(self):
@@ -567,11 +591,11 @@ class KindObjects(object):
 
     def add(self, obj):
         if not isinstance(obj, KindObject):
-            obj = self.kind.wrap_object( obj)
+            obj = self.kind.wrap_object(obj)
         if obj.tag in self._items:
             raise DuplicateObjectException(kind_tag=obj.get_id())
         self._items[obj.tag] = obj
-        return self
+        return obj
 
     def remove(self, obj):
         if obj.tag in self._items:
@@ -615,10 +639,6 @@ class KindObject(object):
     def data(self):
         return self._data
 
-    @property
-    def data_(self):
-        return self.data.data
-
     def validate(self):
         self._kind.validate_object(self._data)
         return self._data
@@ -637,11 +657,11 @@ class KindObject(object):
     def __setitem__(self, item, value):
         self._data[item] = value
 
-    def items(self):
-        return self._data.items()
-
     def __iter__(self):
         return iter(self._data.keys())
+
+    def items(self):
+        return self._data.items()
 
     def get_id(self):
         return '/'.join([self.kind.name, self.tag])
@@ -696,10 +716,10 @@ class InvalidKindObjectReferenceException(PyautoException):
         super(InvalidKindObjectReferenceException, self).__init__(msg)
 
 
-class InvalidKindDefinitionException(PyautoException):
+class InvalidKindAttributeDetailException(PyautoException):
     def __init__(self, defstr):
         msg = 'Invalid kind definition string: {0}'.format(defstr)
-        super(InvalidKindDefinitionException, self).__init__(msg)
+        super(InvalidKindAttributeDetailException, self).__init__(msg)
 
 
 class UnknownTaskSequenceTypeException(PyautoException):
