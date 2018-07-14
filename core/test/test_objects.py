@@ -1,4 +1,3 @@
-import os
 import sys
 import six
 from copy import deepcopy
@@ -153,7 +152,6 @@ test_kind = {
         'name': 'string',
     },
     'relations': {
-#        'source': 'test.Directory',
     },
     'tasks': {
         '_test_task',
@@ -305,7 +303,7 @@ class Repository(TestCase):
             ('test.Directory', [
                 'web', 'api', 'r1_web', 'r1_api', 'r2_web', 'r2_api'])]))
 
-    def test_query_tags(self):
+    def test_query_tags2(self):
         objs = self.repo.query({'test.Directory': []}, id=True)
         self.assertListEqual(objs, [
             'test.Directory/web', 'test.Directory/api',
@@ -389,7 +387,7 @@ class KindAttributeDetail(TestCase):
 
     def test_optional(self):
         def_ = objects.KindAttributeDetail(self.r, 'sources',
-                                      'test.Directory optional')
+                                           'test.Directory optional')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
         self.assertFalse(def_.required)
@@ -397,7 +395,7 @@ class KindAttributeDetail(TestCase):
 
     def test_list(self):
         def_ = objects.KindAttributeDetail(self.r, 'sources',
-                                      'test.Directory list')
+                                           'test.Directory list')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
         self.assertTrue(def_.required)
@@ -405,7 +403,7 @@ class KindAttributeDetail(TestCase):
 
     def test_optional_list(self):
         def_ = objects.KindAttributeDetail(self.r, 'sources',
-                                      'test.Directory optional list')
+                                           'test.Directory optional list')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
         self.assertFalse(def_.required)
@@ -422,7 +420,7 @@ class KindAttributeDetail(TestCase):
         self.r.add(to2)
 
         def_ = objects.KindAttributeDetail(self.r, 'sources',
-                                      'test.TestKind optional list')
+                                           'test.TestKind optional list')
         value = def_.get_attribute(to2)
         for item in value:
             self.assertIsInstance(item, TestKind)
@@ -433,12 +431,10 @@ class KindAttributeDetail(TestCase):
         to2 = deepcopy(test_object)
         to2['tag'] += '2'
         self.r.add_kind(ok2)
-
         def_ = objects.KindAttributeDetail(self.r, 'sources',
-                                      'test.TestKind')
+                                           'test.TestKind')
         self.r.add(test_object)
         to2_ = self.r.add(to2)
-        print(to2_, to2)
         with self.assertRaises(objects.KindObjectAttributeException):
             def_.get_attribute(to2)
         self.r.remove(to2_)
@@ -651,4 +647,3 @@ class KindObject(TestCase):
         self.assertNotIn('key', self.obj._data)
         self.obj['key'] = 'abc'
         self.assertEqual(self.obj._data['key'], 'abc')
-

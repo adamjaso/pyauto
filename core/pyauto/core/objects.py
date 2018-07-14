@@ -401,7 +401,7 @@ class AttributeDetail(object):
 class Kind(object):
     def __init__(self, repo, kind):
         self._repo = repo
-        self._kind = kind['kind'] #KindAttributeDetail(kind['kind'])
+        self._kind = kind['kind']
         kind['attributes'] = OrderedDict([
             (name, AttributeDetail(self, name, a))
             for name, a in kind.get('attributes', {}).items()
@@ -454,7 +454,7 @@ class Kind(object):
     def validate_object(self, obj):
         for name, attr in self._data['attributes'].items():
             obj[name] = attr.get_attribute(obj)
-        for name, kdef in self._data['relations'].items():
+        for name, kdef in self.relations.items():
             obj[name] = kdef.get_attribute(obj)
         return obj
 
