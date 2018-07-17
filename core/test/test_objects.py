@@ -423,7 +423,7 @@ class KindAttributeDetail(TestCase):
                                            'test.TestKind optional list')
         value = def_.get_attribute(to2)
         for item in value:
-            self.assertIsInstance(item, TestKind)
+            self.assertIsInstance(item.value, TestKind)
 
     def test_get_attribute(self):
         ok2 = deepcopy(test_kind)
@@ -441,7 +441,7 @@ class KindAttributeDetail(TestCase):
         to2['sources'] = test_object['tag']
         self.r.add(to2)
         value = def_.get_attribute(to2)
-        self.assertIsInstance(value, TestKind)
+        self.assertIsInstance(value.required, TestKind)
 
 
 class AttributeDetail(TestCase):
@@ -479,13 +479,16 @@ class Kind(TestCase):
         pass
 
     def test_name(self):
-        pass
+        self.assertEqual(self.kind.name, 'test.TestKind')
 
     def test_tasks(self):
-        pass
+        self.assertIsInstance(self.kind.tasks, objects.KindTasks)
 
     def test_set_repo(self):
-        pass
+        self.kind.set_repo(None)
+        self.assertIsNone(self.kind.repo)
+        self.kind.set_repo(self.r)
+        self.assertIsInstance(self.kind.repo, objects.Repository)
 
     def test_getattr(self):
         pass
@@ -497,12 +500,6 @@ class Kind(TestCase):
         pass
 
     def test_contains(self):
-        pass
-
-    def test_load_relations(self):
-        pass
-
-    def test_validate_object(self):
         pass
 
     def test_get_class(self):
@@ -637,13 +634,70 @@ class KindObject(TestCase):
     def test_kind(self):
         self.assertEqual(self.obj.kind, self.kind)
 
-    def test_validate(self):
-        self.obj.validate()
-
     def test_getitem(self):
         self.assertEqual(self.obj['name'], 'sumpthun')
+
+    def test_getitem_resolve_relations(self):
+        ok2 = deepcopy(test_kind)
+        ok2['kind'] += '2'
+        ok2['relations'] = {'sources': 'test.TestKind list'}
+        self.r.add_kind(ok2)
+
+        to2 = deepcopy(test_object)
+        to2['tag'] += '2'
+        to2['kind'] += '2'
+        to2['sources'] = [test_object['tag']]
+        self.r.add(to2)
+        obj2 = self.r[to2['kind']][to2['tag']]
+        for src in obj2.sources:
+            self.assertIsInstance(src.value, TestKind)
+        for src in obj2['sources']:
+            self.assertIsInstance(src.value, TestKind)
 
     def test_setitem(self):
         self.assertNotIn('key', self.obj._data)
         self.obj['key'] = 'abc'
         self.assertEqual(self.obj._data['key'], 'abc')
+
+
+class RelationList(TestCase):
+    def setUp(self):
+        self.r = objects.Repository()
+        self.r.add_kind(test_kind)
+        self.r.add(test_object)
+
+        ok2 = deepcopy(test_kind)
+        ok2['kind'] += '2'
+        ok2['relations'] = {'sources': 'test.TestKind list'}
+        self.r.add_kind(ok2)
+
+        to2 = deepcopy(test_object)
+        to2['tag'] += '2'
+        to2['kind'] += '2'
+        to2['sources'] = [test_object['tag']]
+        self.r.add(to2)
+
+        self.obj2 = self.r['test.TestKind2/muhthing2']
+
+    def test_init(self):
+        self.assertIsInstance(self.obj2.sources, objects.RelationList)
+
+    def test_value(self):
+        self.assertIsInstance(self.obj2.sources.value, list)
+
+    def test_get_tag(self):
+        self.assertIsInstance(self.obj2.sources.get_tag('muhthing'),
+                              objects.Relation)
+
+    def test_getitem(self):
+        rel = self.obj2.sources['muhthing']
+        self.assertIsInstance(rel, objects.Relation)
+        muh = rel.required
+        self.assertEqual(muh.get_id(), 'test.TestKind/muhthing')
+
+    def test_len(self):
+        self.assertEqual(len(self.obj2.sources), 1)
+
+    def test_iter(self):
+        for item in self.obj2.sources:
+            self.assertIsInstance(item, objects.Relation)

@@ -315,7 +315,7 @@ class KindAttributeDetail(object):
                 self.list = True
 
     def __str__(self):
-        return self.kind #': '.join([self.name, self.kind])
+        return self.kind
 
     def __repr__(self):
         return self.__str__()
@@ -335,9 +335,13 @@ class KindAttributeDetail(object):
             if not isinstance(value, list):
                 raise KindObjectAttributeException(
                     'Invalid attribute type: {0}'.format(type(value)))
-            return [self.repo[self.kind][tag] for tag in value]
+            return RelationList(obj, self.name, [
+                self.repo[self.kind][tag] for tag in value])
         else:
-            return self.repo[self.kind][value]
+            if isinstance(value, list):
+                raise KindObjectAttributeException(
+                    'Invalid attribute type: {0}'.format(type(value)))
+            return Relation(obj, self.name, self.repo[self.kind][value])
 
 
 class AttributeDetail(object):
@@ -402,7 +406,7 @@ class Kind(object):
     def __init__(self, repo, kind):
         self._repo = repo
         self._kind = kind['kind']
-        kind['attributes'] = OrderedDict([
+        self._attributes = OrderedDict([
             (name, AttributeDetail(self, name, a))
             for name, a in kind.get('attributes', {}).items()
         ])
@@ -411,7 +415,16 @@ class Kind(object):
             (name, KindAttributeDetail(repo, name, k))
             for name, k in kind.get('relations', {}).items()
         ])
+        for name in self._relations:
+            if name in self._attributes:
+                raise InvalidKindException(
+                    'Kind relations may not have the sam e as attributes: {0}'
+                    .format(name))
         self._tasks = KindTasks(self, kind.get('tasks', []))
+
+    @property
+    def repo(self):
+        return self._repo
 
     @property
     def name(self):
@@ -424,6 +437,10 @@ class Kind(object):
     @property
     def relations(self):
         return self._relations
+
+    @property
+    def attributes(self):
+        return self._attributes
 
     def set_repo(self, repo):
         self._repo = repo
@@ -445,18 +462,29 @@ class Kind(object):
         return item in self._data
 
     def validate_relations(self):
-        self._relations = OrderedDict([
-            (name, self._repo.get_kind(kind))
-            for name, kind in self._relations.items()
-        ])
+        for name, kind in self._relations.items():
+            self._repo.get_kind(kind)
         return self
 
-    def validate_object(self, obj):
-        for name, attr in self._data['attributes'].items():
-            obj[name] = attr.get_attribute(obj)
-        for name, kdef in self.relations.items():
-            obj[name] = kdef.get_attribute(obj)
-        return obj
+    def _resolve_attribute(self, name, obj):
+        if name not in self._attributes:
+            raise KindObjectAttributeException(
+                'Unknown attribute: {0} for {1}'.format(name, obj))
+        return self._attributes[name].get_attribute(obj)
+
+    def _resolve_relation(self, name, obj):
+        if name not in self.relations:
+            raise KindObjectRelationException(
+                'Unknown attribute relation: {0} for {1}'.format(name, obj))
+        return self._relations[name].get_attribute(obj)
+
+    def resolve_attr(self, name, obj):
+        if name in self._attributes:
+            return self._resolve_attribute(name, obj)
+        elif name in self._relations:
+            return self._resolve_relation(name, obj)
+        else:
+            return obj.get(name)
 
     def get_class(self):
         if 'class' not in self:
@@ -593,7 +621,7 @@ class KindObjects(object):
         if not isinstance(obj, KindObject):
             obj = self.kind.wrap_object(obj)
         if obj.tag in self._items:
-            raise DuplicateObjectException(kind_tag=obj.get_id())
+            raise DuplicateKindObjectException(kind_tag=obj.get_id())
         self._items[obj.tag] = obj
         return obj
 
@@ -639,20 +667,22 @@ class KindObject(object):
     def data(self):
         return self._data
 
-    def validate(self):
-        self._kind.validate_object(self._data)
-        return self._data
-
     def set_repo(self, repo):
         self._repo = repo
         return self
+
+    def get(self, name):
+        return self._kind.resolve_attr(name, self._data)
 
     def __repr__(self):
         return ''.join(['<', self.__class__.__name__, ' ', self.get_id(), ' ',
                         str(self._data), '>'])
 
+    def __getattr__(self, item):
+        return self.get(item)
+
     def __getitem__(self, item):
-        return self._data.get(item)
+        return self.get(item)
 
     def __setitem__(self, item, value):
         self._data[item] = value
@@ -661,7 +691,8 @@ class KindObject(object):
         return iter(self._data.keys())
 
     def items(self):
-        return self._data.items()
+        for name in self._data:
+            yield (name, self.get(name))
 
     def get_id(self):
         return '/'.join([self.kind.name, self.tag])
@@ -671,12 +702,100 @@ class KindObject(object):
             args = {args: kwargs}
         return self._kind.tasks.invoke(self, args)
 
+    @classmethod
+    def get_class_name(cls):
+        return '.'.join([cls.__module__, cls.__name__])
+
+    @classmethod
+    def get_kind_definition(cls):
+        return OrderedDict([
+            ('kind', cls.get_class_name()),
+            ('class', cls.get_class_name()),
+            ('attributes', OrderedDict()),
+            ('relations', OrderedDict()),
+        ])
+
+
+class RelationList(object):
+    def __init__(self, parent, name, items):
+        self._parent = parent
+        self._items = items
+        self._name = name
+
+    @property
+    def value(self):
+        return self.required
+
+    @property
+    def required(self):
+        if self._items is None:
+            raise UnknownKindObjectRelationException(
+                'Required list was not found: {0}.{1}'
+                .format(self.parent.get_id(), self._name))
+        return self._items
+
+    def get_tag(self, tag):
+        for item in self.required:
+            if item.tag == tag:
+                return Relation(self._parent, self._name, item)
+        return Relation(self._parent, self._name, None)
+
+    def __len__(self):
+        return len(self.required)
+
+    def __iter__(self):
+        for item in self.required:
+            yield Relation(self._parent, self._name, item)
+
+    def __contains__(self, tag):
+        return len(_ for item in self.required if item.tag == tag) > 0
+
+    def __bool__(self):
+        return self._items is not None
+
+    def __nonzero__(self):
+        return self.__bool__()
+
+    def __getitem__(self, item):
+        return self.get_tag(item)
+
+
+class Relation(object):
+    def __init__(self, parent, name, value):
+        self._parent = parent
+        self._value = value
+        self._name = name
+
+    def __getitem__(self, item):
+        return self.required.__getitem__(item)
+
+    def __getattr__(self, name):
+        return self.required.__getattr__(name)
+
+    @property
+    def value(self):
+        return self._value
+
+    @property
+    def required(self):
+        if self._value is None:
+            raise UnknownKindObjectRelationException(
+                'Required value was not found: {0}.{1}'
+                .format(self.parent.get_id(), self._name))
+        return self._value
+
+    def __bool__(self):
+        return self._value is not None
+
+    def __nonzero__(self):
+        return self.__bool__()
+
 
 class PyautoException(Exception):
     pass
 
 
-class DuplicateObjectException(PyautoException):
+class DuplicateKindObjectException(PyautoException):
     def __init__(self, kind=None, tag=None, kind_tag=None):
         if kind_tag:
             data = kind_tag
@@ -685,7 +804,7 @@ class DuplicateObjectException(PyautoException):
         else:
             data = 'invalid tag'
         msg = 'Duplicate object: {0}'.format(data)
-        super(DuplicateObjectException, self).__init__(msg)
+        super(DuplicateKindObjectException, self).__init__(msg)
 
 
 class UnknownKindException(PyautoException):
@@ -694,9 +813,15 @@ class UnknownKindException(PyautoException):
         super(UnknownKindException, self).__init__(msg)
 
 
+class UnknownKindObjectRelationException(PyautoException):
+    pass
+
+
 class UnknownKindObjectException(PyautoException):
-    def __init__(self, kind=None, tag=None, kind_tag=None):
-        if kind_tag:
+    def __init__(self, kind=None, tag=None, kind_tag=None, value=None):
+        if value is not None:
+            data = value
+        elif kind_tag:
             data = kind_tag
         elif kind and tag:
             data = '/'.join([kind, tag])
@@ -704,6 +829,10 @@ class UnknownKindObjectException(PyautoException):
             data = '<unknown>'
         msg = 'Unknown object: {0}'.format(data)
         super(UnknownKindObjectException, self).__init__(msg)
+
+
+class InvalidKindException(PyautoException):
+    pass
 
 
 class InvalidKindObjectException(PyautoException):
@@ -751,4 +880,8 @@ class InvalidKindObjectTaskInvocationException(PyautoException):
 
 
 class InvalidTaskSequenceInvocationException(PyautoException):
+    pass
+
+
+class KindObjectRelationException(PyautoException):
     pass
