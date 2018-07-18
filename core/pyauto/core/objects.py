@@ -348,16 +348,7 @@ class AttributeDetail(object):
     parsers = {
         'string': six.text_type,
         'path': os.path.abspath,
-        'list': list,
-        'map': OrderedDict,
-        'reference': Reference,
-        'relpath': 'path',
-        'url': lambda uri: uriutil.format(**uriutil.parse(uri)),
-        'int': int,
-        'float': float,
         'envvar': os.getenv,
-        'json': json.loads,
-        'yaml': yamlutil.load_dict,
     }
     _parse = None
     kind = None

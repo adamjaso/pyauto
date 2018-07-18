@@ -10,7 +10,7 @@ kinds_ = """
 - kind: test.Region
   module: test.test_objects
   attributes:
-    url: url
+    url: string
     user: string
     password: string
   tasks:
@@ -455,7 +455,7 @@ class AttributeDetail(TestCase):
         pass
 
     def test_resolve_parser(self):
-        self.def_.resolve_parser('relpath')
+        self.def_.resolve_parser('path')
 
     def test_parse(self):
         res = self.def_.parse({})
