@@ -166,7 +166,7 @@ test_object = {
 }
 
 
-class TestKind(objects.KindObject):
+class TestKind(objects.KindAPI):
     pass
 
 
@@ -423,7 +423,7 @@ class KindAttributeDetail(TestCase):
                                            'test.TestKind optional list')
         value = def_.get_attribute(to2)
         for item in value:
-            self.assertIsInstance(item.value, TestKind)
+            self.assertIsInstance(item.value, objects.KindObject)
 
     def test_get_attribute(self):
         ok2 = deepcopy(test_kind)
@@ -441,7 +441,7 @@ class KindAttributeDetail(TestCase):
         to2['sources'] = test_object['tag']
         self.r.add(to2)
         value = def_.get_attribute(to2)
-        self.assertIsInstance(value.required, TestKind)
+        self.assertIsInstance(value.required, objects.KindObject)
 
 
 class AttributeDetail(TestCase):
@@ -507,7 +507,7 @@ class Kind(TestCase):
 
     def test_wrap_object(self):
         obj = self.kind.wrap_object(test_object)
-        self.assertIsInstance(obj, TestKind)
+        self.assertIsInstance(obj, objects.KindAPI)
 
     def test_get_module(self):
         self.assertEqual(sys.modules[__name__], self.kind.get_module())
@@ -650,9 +650,9 @@ class KindObject(TestCase):
         self.r.add(to2)
         obj2 = self.r[to2['kind']][to2['tag']]
         for src in obj2.sources:
-            self.assertIsInstance(src.value, TestKind)
+            self.assertIsInstance(src.value, objects.KindObject)
         for src in obj2['sources']:
-            self.assertIsInstance(src.value, TestKind)
+            self.assertIsInstance(src.value, objects.KindObject)
 
     def test_setitem(self):
         self.assertNotIn('key', self.obj._data)

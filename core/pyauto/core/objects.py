@@ -479,7 +479,7 @@ class Kind(object):
 
     def get_class(self):
         if 'class' not in self:
-            return KindObject
+            return KindAPI
         parts = self['class'].split('.')
         module_name = '.'.join(parts[:-1])
         class_name = parts[-1]
@@ -487,7 +487,7 @@ class Kind(object):
         return getattr(module, class_name)
 
     def wrap_object(self, obj):
-        return self.get_class()(self._repo, obj)
+        return self.get_class()(obj)
 
     def get_module(self):
         return importlib.import_module(self['module'])
@@ -610,7 +610,7 @@ class KindObjects(object):
 
     def add(self, obj):
         if not isinstance(obj, KindObject):
-            obj = self.kind.wrap_object(obj)
+            obj = KindObject(self._repo, obj)
         if obj.tag in self._items:
             raise DuplicateKindObjectException(kind_tag=obj.get_id())
         self._items[obj.tag] = obj
@@ -647,6 +647,10 @@ class KindObject(object):
         self._data = obj
 
     @property
+    def api(self):
+        return self._kind.wrap_object(self)
+
+    @property
     def tag(self):
         return self['tag']
 
@@ -665,6 +669,9 @@ class KindObject(object):
     def get(self, name):
         return self._kind.resolve_attr(name, self._data)
 
+    def set(self, item, value):
+        self._data[item] = value
+
     def __repr__(self):
         return ''.join(['<', self.__class__.__name__, ' ', self.get_id(), ' ',
                         str(self._data), '>'])
@@ -676,7 +683,7 @@ class KindObject(object):
         return self.get(item)
 
     def __setitem__(self, item, value):
-        self._data[item] = value
+        self.set(item, value)
 
     def __iter__(self):
         return iter(self._data.keys())
@@ -693,18 +700,19 @@ class KindObject(object):
             args = {args: kwargs}
         return self._kind.tasks.invoke(self, args)
 
-    @classmethod
-    def get_class_name(cls):
-        return '.'.join([cls.__module__, cls.__name__])
 
-    @classmethod
-    def get_kind_definition(cls):
-        return OrderedDict([
-            ('kind', cls.get_class_name()),
-            ('class', cls.get_class_name()),
-            ('attributes', OrderedDict()),
-            ('relations', OrderedDict()),
-        ])
+class KindAPI(object):
+    def __init__(self, kind_object):
+        self._kind_object = kind_object
+
+    def __getitem__(self, name):
+        self._kind_object.get(name)
+
+    def __getattr__(self, name):
+        return self._kind_object.get(name)
+
+    def __setitem__(self, name, value):
+        self._kind_object.set(name, value)
 
 
 class RelationList(object):
