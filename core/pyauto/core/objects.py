@@ -155,6 +155,7 @@ class TaskSequence(object):
 class Repository(object):
     def __init__(self):
         self._data = OrderedDict()
+        self._packages = OrderedDict()
 
     @property
     def data(self):
@@ -196,6 +197,10 @@ class Repository(object):
             total += len(objs)
         return total
 
+    def assert_package(self, package):
+        if package not in self._packages:
+            raise UnknownPackageException(package)
+
     def assert_kind(self, kind):
         if str(kind) not in self._data:
             raise UnknownKindException(kind)
@@ -226,24 +231,29 @@ class Repository(object):
         else:
             return ref.kind in self._data
 
-    def add_kind(self, kind):
-        if not isinstance(kind, Kind):
-            kind = deepcopy(kind)
-            kind = Kind(self, kind)
-        kind.set_repo(self)
+    def _add_kind(self, kind):
         if kind.name not in self._data:
             self._data[kind.name] = KindObjects(self, kind)
+        else:
+            self.assert_kind(kind.name)
         return self
+
+    def add_package(self, package):
+        if not isinstance(package, Package):
+            package = deepcopy(package)
+            package = Package(self, package)
+        if package.name not in self._packages:
+            self._packages[package.name] = package
+            for kind in package.kinds:
+                self._add_kind(kind)
+
+    def get_package(self, package):
+        self.assert_package(package)
+        return self._packages[package]
 
     def get_kind(self, kind):
         self.assert_kind(kind)
         return self._data[str(kind)].kind
-
-    def remove_kind(self, kind):
-        if kind.name in self._data:
-            del self._data[kind.name]
-            return True
-        return False
 
     def add(self, obj):
         if not isinstance(obj, (dict, OrderedDict)) or 'kind' not in obj:
@@ -257,17 +267,18 @@ class Repository(object):
         self.assert_kind(obj.kind.name)
         self._data[obj.kind.name].remove(obj)
 
-    def parse_kinds(self, data):
-        data = yamlutil.load_dict(data)
-        return self.load_kinds(data)
-
-    def load_kinds(self, data):
-        data = deepcopy(data)
-        for kind in data:
-            self.add_kind(kind)
-        for kindobjs in self._data.values():
-            kindobjs.kind.validate_relations()
+    def load_packages(self, data):
+        for package in data:
+            self.add_package(package)
+        self.validate_packages()
         return self
+
+    def validate_packages(self):
+        for kindobjs in self._data.values():
+            kindobjs.kind.validate_relations(self)
+        for name, package in self._packages.items():
+            for dep in package.dependencies:
+                self.assert_package(dep)
 
     def parse_objects(self, data):
         data = yamlutil.load_dict(data, load_all=True)
@@ -294,18 +305,16 @@ class Reference(object):
 
 
 class KindAttributeDetail(object):
-    repo = None
     kind = None
     name = None
     required = True
     list = False
 
-    def __init__(self, repo, name, key):
-        if not isinstance(key, six.string_types):
-            raise InvalidKindAttributeDetailException(key)
-        self.repo = repo
+    def __init__(self, name, spec):
+        if not isinstance(spec, six.string_types):
+            raise InvalidKindAttributeDetailException(spec)
         self.name = name
-        parts = re.split('\s+', key)
+        parts = re.split('\s+', spec)
         for i, part in enumerate(parts):
             if 0 == i:
                 self.kind = part
@@ -320,7 +329,7 @@ class KindAttributeDetail(object):
     def __repr__(self):
         return self.__str__()
 
-    def get_attribute(self, obj):
+    def get_attribute(self, obj, repo):
         if self.name not in obj:
             if self.required:
                 raise KindObjectAttributeException(
@@ -336,12 +345,12 @@ class KindAttributeDetail(object):
                 raise KindObjectAttributeException(
                     'Invalid attribute type: {0}'.format(type(value)))
             return RelationList(obj, self.name, [
-                self.repo[self.kind][tag] for tag in value])
+                repo[self.kind][tag] for tag in value])
         else:
             if isinstance(value, list):
                 raise KindObjectAttributeException(
                     'Invalid attribute type: {0}'.format(type(value)))
-            return Relation(obj, self.name, self.repo[self.kind][value])
+            return Relation(obj, self.name, repo[self.kind][value])
 
 
 class AttributeDetail(object):
@@ -393,17 +402,63 @@ class AttributeDetail(object):
         return self.parse(value)
 
 
-class Kind(object):
-    def __init__(self, repo, kind):
+class Package(object):
+    def __init__(self, repo, package):
         self._repo = repo
+        self._data = package
+        self._dependencies = package.get('dependencies', [])
+        self._kinds = [
+            Kind(self, kind)
+            for kind in package.get('kinds', [])
+        ]
+
+    @property
+    def name(self):
+        return self.get('package')
+
+    @property
+    def kinds(self):
+        return self._kinds
+
+    @property
+    def repo(self):
+        return self._repo
+
+    @property
+    def dependencies(self):
+        return self._dependencies
+
+    def validate_dependencies(self):
+        for dep in self._dependencies:
+            pkg = self._repo.get_package(dep)
+
+    def get(self, item):
+        return self._data.get(item, None)
+
+    def set(self, item, value):
+        self._data[item] = value
+
+    def __getitem__(self, item):
+        return self.get(item)
+
+    def __getattr__(self, name):
+        return self.get(name)
+
+    def __setitem__(self, item, value):
+        self.set(item, value)
+
+
+class Kind(object):
+    def __init__(self, package, kind):
+        self._package = package
+        self._data = kind
         self._kind = kind['kind']
         self._attributes = OrderedDict([
             (name, AttributeDetail(self, name, a))
             for name, a in kind.get('attributes', {}).items()
         ])
-        self._data = kind
         self._relations = OrderedDict([
-            (name, KindAttributeDetail(repo, name, k))
+            (name, KindAttributeDetail(name, k))
             for name, k in kind.get('relations', {}).items()
         ])
         for name in self._relations:
@@ -414,12 +469,8 @@ class Kind(object):
         self._tasks = KindTasks(self, kind.get('tasks', []))
 
     @property
-    def repo(self):
-        return self._repo
-
-    @property
     def name(self):
-        return str(self._kind)
+        return '.'.join([self._package.name, self._kind])
 
     @property
     def tasks(self):
@@ -433,10 +484,6 @@ class Kind(object):
     def attributes(self):
         return self._attributes
 
-    def set_repo(self, repo):
-        self._repo = repo
-        return self
-
     def __repr__(self):
         return str(self._data)
 
@@ -446,15 +493,12 @@ class Kind(object):
     def __getitem__(self, item):
         return self._data.get(item, None)
 
-    def __setitem__(self, item, value):
-        self._data[item] = value
-
     def __contains__(self, item):
         return item in self._data
 
-    def validate_relations(self):
+    def validate_relations(self, repo):
         for name, kind in self._relations.items():
-            self._repo.get_kind(kind)
+            repo.get_kind(kind)
         return self
 
     def _resolve_attribute(self, name, obj):
@@ -463,17 +507,17 @@ class Kind(object):
                 'Unknown attribute: {0} for {1}'.format(name, obj))
         return self._attributes[name].get_attribute(obj)
 
-    def _resolve_relation(self, name, obj):
+    def _resolve_relation(self, name, obj, repo):
         if name not in self.relations:
             raise KindObjectRelationException(
                 'Unknown attribute relation: {0} for {1}'.format(name, obj))
-        return self._relations[name].get_attribute(obj)
+        return self._relations[name].get_attribute(obj, repo)
 
-    def resolve_attr(self, name, obj):
+    def resolve_attr(self, name, obj, repo):
         if name in self._attributes:
             return self._resolve_attribute(name, obj)
         elif name in self._relations:
-            return self._resolve_relation(name, obj)
+            return self._resolve_relation(name, obj, repo)
         else:
             return obj.get(name)
 
@@ -485,6 +529,9 @@ class Kind(object):
         class_name = parts[-1]
         module = importlib.import_module(module_name)
         return getattr(module, class_name)
+
+    def has_class(self):
+        return 'class' in self
 
     def wrap_object(self, obj):
         return self.get_class()(obj)
@@ -667,7 +714,7 @@ class KindObject(object):
         return self
 
     def get(self, name):
-        return self._kind.resolve_attr(name, self._data)
+        return self._kind.resolve_attr(name, self._data, self._repo)
 
     def set(self, item, value):
         self._data[item] = value
@@ -810,6 +857,12 @@ class UnknownKindException(PyautoException):
     def __init__(self, kind):
         msg = 'Unknown kind: {0}'.format(kind)
         super(UnknownKindException, self).__init__(msg)
+
+
+class UnknownPackageException(PyautoException):
+    def __init__(self, package):
+        msg = 'Unknown package: {0}'.format(package)
+        super(UnknownPackageException, self).__init__(msg)
 
 
 class UnknownKindObjectRelationException(PyautoException):

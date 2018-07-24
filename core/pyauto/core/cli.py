@@ -54,14 +54,14 @@ class Command(object):
             sys.exit(1)
 
     def load(self):
-        self.read_kinds()
+        self.read_packages()
         self.read_objects()
         self.read_tasks()
 
-    def read_kinds(self):
+    def read_packages(self):
         if self.kinds_filename is not None:
             for obj in self.read_filename(self.kinds_filename):
-                self.repository.add_kind(obj)
+                self.repository.add_package(obj)
         for kind in self.repository.kinds:
             if kind.has_module():
                 mod = kind.get_module()
@@ -71,7 +71,7 @@ class Command(object):
                         'Module kinds must be provided as a list: {0}.kinds = {1}'
                         .format(mod.__name__, kindobjs))
                 for kindobj in kindobjs:
-                    self.repository.add_kind(kindobj)
+                    self.repository.add_package(kindobj)
 
     def read_objects(self):
         for obj in self.read_filename(self.objects_filename):

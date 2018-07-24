@@ -6,42 +6,47 @@ from unittest import TestCase
 from pyauto.core import objects
 from pyauto.util import yamlutil
 
-kinds_ = """
-- kind: test.Region
-  module: test.test_objects
-  attributes:
-    url: string
-    user: string
-    password: string
-  tasks:
-  - login
-- kind: test.App
-  module: test.test_objects
-  attributes:
-    org: string
-    space: string
-  relations:
-    source: test.Directory
-- kind: test.RegionApp
-  module: test.test_objects
-  relations:
-    app: test.App
-    region: test.Region
-    destination: test.Directory
-  tasks:
-  - deploy
-- kind: test.Directory
-  module: test.test_objects
-  attributes:
-    name: string
-  relations:
-    source: test.Directory optional
-  tasks:
-  - rmtree
-  - copytree
-  - render_templates
+packages_ = """
+- package: test
+  version: 0.0.0
+  dependencies:
+  - test
+  kinds:
+  - kind: Region
+    module: test.test_objects
+    attributes:
+      url: string
+      user: string
+      password: string
+    tasks:
+    - login
+  - kind: App
+    module: test.test_objects
+    attributes:
+      org: string
+      space: string
+    relations:
+      source: test.Directory
+  - kind: RegionApp
+    module: test.test_objects
+    relations:
+      app: test.App
+      region: test.Region
+      destination: test.Directory
+    tasks:
+    - deploy
+  - kind: Directory
+    module: test.test_objects
+    attributes:
+      name: string
+    relations:
+      source: test.Directory optional
+    tasks:
+    - rmtree
+    - copytree
+    - render_templates
 """
-kinds_ = yamlutil.load_dict(kinds_)
+packages_ = yamlutil.load_dict(packages_)
 
 tasks_ = """
 regions:
@@ -144,26 +149,42 @@ source: ./api
 """
 objects_ = list(yamlutil.load_dict(objects_, load_all=True))
 
-test_kind = {
-    'kind': 'test.TestKind',
-    'module': 'test.test_objects',
-    'class': 'test.test_objects.TestKind',
-    'attributes': {
-        'name': 'string',
-    },
-    'relations': {
-    },
-    'tasks': {
-        '_test_task',
-    },
-}
 
-test_object = {
-    'tag': 'muhthing',
-    'kind': 'test.TestKind',
-    'name': 'sumpthun',
-    'source': 'web'
-}
+def get_test_kind(name=None, attributes=None, relations=None):
+    return {
+        'kind': name or 'TestKind',
+        'module': 'test.test_objects',
+        'class': 'test.test_objects.TestKind',
+        'attributes': attributes or {
+            'name': 'string',
+        },
+        'relations': relations or {
+        },
+        'tasks': {
+            '_test_task',
+        },
+    }
+
+
+def get_test_package(package=None, kinds=None, attributes=None, relations=None):
+    return {
+        'package': package or 'test2',
+        'version': '0.0.0',
+        'dependencies': [],
+        'kinds': [get_test_kind(kind, attributes, relations)
+                  for kind in (kinds or ['TestKind'])]
+    }
+
+
+def get_test_object(package='test2', kind='TestKind', tag='muhthing', **kwargs):
+    obj = {
+        'tag': tag,
+        'kind': '.'.join([package, kind]),
+        'name': 'sumpthun',
+        'source': 'web'
+    }
+    obj.update(kwargs)
+    return obj
 
 
 class TestKind(objects.KindAPI):
@@ -197,7 +218,7 @@ def _test_task(test_task, **args):
 class TaskSequenceArguments(TestCase):
     def setUp(self):
         self.r = objects.Repository()
-        self.r.load_kinds(kinds_)
+        self.r.load_packages(packages_)
         self.ts = objects.TaskSequences(self.r, tasks_)
 
     def test_len(self):
@@ -207,7 +228,7 @@ class TaskSequenceArguments(TestCase):
 class TaskSequences(TestCase):
     def setUp(self):
         self.r = objects.Repository()
-        self.r.load_kinds(kinds_)
+        self.r.load_packages(packages_)
         self.ts = objects.TaskSequences(self.r, tasks_)
 
     def test_repo(self):
@@ -230,7 +251,7 @@ class TaskSequences(TestCase):
 class TaskSequence(TestCase):
     def setUp(self):
         self.r = objects.Repository()
-        self.r.load_kinds(kinds_)
+        self.r.load_packages(packages_)
         self.r.load_objects(objects_)
         self.ts = objects.TaskSequences(self.r, tasks_)
         self.tsq = self.ts['apps.deploy']
@@ -285,7 +306,7 @@ class TaskSequence(TestCase):
 class Repository(TestCase):
     def setUp(self):
         self.repo = objects.Repository()
-        self.repo.load_kinds(kinds_)
+        self.repo.load_packages(packages_)
         self.repo.load_objects(objects_)
 
     def test_kinds(self):
@@ -326,46 +347,33 @@ class Repository(TestCase):
         obj = self.repo['test.Region/r1']
         self.assertIsInstance(obj, objects.KindObject)
 
-    def test_add_kind(self):
-        self.assertNotIn('test.TestKind', self.repo)
-        self.repo.add_kind(test_kind)
-        self.assertIn('test.TestKind', self.repo)
-
-    def test_add_kind_duplicate(self):
-        self.assertNotIn('test.TestKind', self.repo)
-        self.repo.add_kind(test_kind)
-        self.repo.add_kind(test_kind)
-
     def test_get_kind(self):
-        self.repo.add_kind(test_kind)
-        kind = self.repo.get_kind('test.TestKind')
+        test_package = get_test_package()
+        self.repo.add_package(test_package)
+        kind = self.repo.get_kind('test2.TestKind')
         self.assertIsInstance(kind, objects.Kind)
-        self.assertEqual(kind.name, 'test.TestKind')
-
-    def test_remove_kind(self):
-        self.repo.add_kind(test_kind)
-        kind = self.repo.get_kind('test.TestKind')
-        self.repo.remove_kind(kind)
-        self.assertNotIn('test.TestKind', self.repo)
+        self.assertEqual(kind.name, 'test2.TestKind')
 
     def test_add(self):
-        self.repo.add_kind(test_kind)
-        self.assertNotIn('test.TestKind/muhthing', self.repo)
-        self.repo.add(test_object)
-        self.assertIn('test.TestKind/muhthing', self.repo)
+        test_package = get_test_package()
+        self.repo.add_package(test_package)
+        self.assertNotIn('test2.TestKind/muhthing', self.repo)
+        self.repo.add(get_test_object('test2', 'TestKind', 'muhthing'))
+        self.assertIn('test2.TestKind/muhthing', self.repo)
 
     def test_remove(self):
-        self.repo.add_kind(test_kind)
-        self.repo.add(test_object)
-        thing = self.repo['test.TestKind/muhthing']
+        test_package = get_test_package()
+        self.repo.add_package(test_package)
+        self.repo.add(get_test_object('test2', 'TestKind', 'muhthing'))
+        thing = self.repo['test2.TestKind/muhthing']
         self.repo.remove(thing)
-        self.assertNotIn('test.TestKind/muhthing', self.repo)
+        self.assertNotIn('test2.TestKind/muhthing', self.repo)
 
 
 class Reference(TestCase):
     def test_init(self):
-        ref = objects.Reference('test.TestKind/muhthing')
-        self.assertEqual(ref.kind, 'test.TestKind')
+        ref = objects.Reference('test2.TestKind/muhthing')
+        self.assertEqual(ref.kind, 'test2.TestKind')
         self.assertEqual(ref.tag, 'muhthing')
 
     def test_init_invalid(self):
@@ -376,17 +384,17 @@ class Reference(TestCase):
 class KindAttributeDetail(TestCase):
     def setUp(self):
         self.r = objects.Repository()
-        self.r.load_kinds(kinds_)
+        self.r.load_packages(packages_)
 
     def test_init(self):
-        def_ = objects.KindAttributeDetail(self.r, 'sources', 'test.Directory')
+        def_ = objects.KindAttributeDetail('sources', 'test.Directory')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
         self.assertTrue(def_.required)
         self.assertFalse(def_.list)
 
     def test_optional(self):
-        def_ = objects.KindAttributeDetail(self.r, 'sources',
+        def_ = objects.KindAttributeDetail('sources',
                                            'test.Directory optional')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
@@ -394,7 +402,7 @@ class KindAttributeDetail(TestCase):
         self.assertFalse(def_.list)
 
     def test_list(self):
-        def_ = objects.KindAttributeDetail(self.r, 'sources',
+        def_ = objects.KindAttributeDetail('sources',
                                            'test.Directory list')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
@@ -402,7 +410,7 @@ class KindAttributeDetail(TestCase):
         self.assertTrue(def_.list)
 
     def test_optional_list(self):
-        def_ = objects.KindAttributeDetail(self.r, 'sources',
+        def_ = objects.KindAttributeDetail('sources',
                                            'test.Directory optional list')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
@@ -410,45 +418,55 @@ class KindAttributeDetail(TestCase):
         self.assertTrue(def_.list)
 
     def test_get_attribute_list(self):
-        ok2 = deepcopy(test_kind)
-        ok2['relations'] = {'sources': 'test.TestKind list'}
-        to2 = deepcopy(test_object)
-        to2['tag'] += '2'
-        to2['sources'] = [test_object['tag']]
-        self.r.add_kind(ok2)
+        test_package = get_test_package()
+        ok2 = get_test_package(
+            package='test3',
+            relations={'sources': 'test2.TestKind list'})
+        test_object = get_test_object()
+        to2 = get_test_object(
+            package='test3',
+            kind='TestKind',
+            tag='muhthing2',
+            sources=[test_object['tag']])
+        self.r.add_package(test_package)
+        self.r.add_package(ok2)
         self.r.add(test_object)
         self.r.add(to2)
 
-        def_ = objects.KindAttributeDetail(self.r, 'sources',
-                                           'test.TestKind optional list')
-        value = def_.get_attribute(to2)
+        def_ = objects.KindAttributeDetail('sources', 'test2.TestKind list')
+        value = def_.get_attribute(to2, self.r)
         for item in value:
             self.assertIsInstance(item.value, objects.KindObject)
 
     def test_get_attribute(self):
-        ok2 = deepcopy(test_kind)
-        ok2['relations'] = {'sources': 'test.TestKind'}
-        to2 = deepcopy(test_object)
-        to2['tag'] += '2'
-        self.r.add_kind(ok2)
-        def_ = objects.KindAttributeDetail(self.r, 'sources',
-                                           'test.TestKind')
+        ok2 = get_test_package(
+            package='test3',
+            relations={'sources': 'test2.TestKind'})
+        to2 = get_test_object(tag='muhthing2')
+        test_package = get_test_package()
+        test_object = get_test_object()
+
+        self.r.add_package(ok2)
+        self.r.add_package(test_package)
         self.r.add(test_object)
+
         to2_ = self.r.add(to2)
+        def_ = objects.KindAttributeDetail('sources', 'test2.TestKind')
         with self.assertRaises(objects.KindObjectAttributeException):
-            def_.get_attribute(to2)
+            def_.get_attribute(to2, self.r)
         self.r.remove(to2_)
         to2['sources'] = test_object['tag']
         self.r.add(to2)
-        value = def_.get_attribute(to2)
+        value = def_.get_attribute(to2, self.r)
         self.assertIsInstance(value.required, objects.KindObject)
 
 
 class AttributeDetail(TestCase):
     def setUp(self):
+        test_package = get_test_package()
         self.r = objects.Repository()
-        self.r.add_kind(test_kind)
-        kind = self.r.get_kind('test.TestKind')
+        self.r.add_package(test_package)
+        kind = self.r.get_kind('test2.TestKind')
         self.def_ = objects.AttributeDetail(kind, 'name', 'string optional')
 
     def test_init(self):
@@ -463,37 +481,30 @@ class AttributeDetail(TestCase):
         self.assertEqual(res, '{}')
 
     def test_get_attribute(self):
+        test_object = get_test_object()
         self.r.add(test_object)
-        obj = self.r['test.TestKind/muhthing']
+        obj = self.r['test2.TestKind/muhthing']
         res = self.def_.get_attribute(obj)
         self.assertEqual(res, 'sumpthun')
 
 
 class Kind(TestCase):
     def setUp(self):
+        test_package = get_test_package()
         self.r = objects.Repository()
-        self.r.add_kind(test_kind)
-        self.kind = self.r.get_kind('test.TestKind')
+        self.r.add_package(test_package)
+        self.kind = self.r.get_kind('test2.TestKind')
 
     def test_init(self):
         pass
 
     def test_name(self):
-        self.assertEqual(self.kind.name, 'test.TestKind')
+        self.assertEqual(self.kind.name, 'test2.TestKind')
 
     def test_tasks(self):
         self.assertIsInstance(self.kind.tasks, objects.KindTasks)
 
-    def test_set_repo(self):
-        self.kind.set_repo(None)
-        self.assertIsNone(self.kind.repo)
-        self.kind.set_repo(self.r)
-        self.assertIsInstance(self.kind.repo, objects.Repository)
-
     def test_getattr(self):
-        pass
-
-    def test_setitem(self):
         pass
 
     def test_getitem(self):
@@ -506,6 +517,7 @@ class Kind(TestCase):
         self.assertEqual(self.kind.get_class(), TestKind)
 
     def test_wrap_object(self):
+        test_object = get_test_object()
         obj = self.kind.wrap_object(test_object)
         self.assertIsInstance(obj, objects.KindAPI)
 
@@ -515,10 +527,12 @@ class Kind(TestCase):
 
 class KindTasks(TestCase):
     def setUp(self):
+        test_package = get_test_package()
+        test_object = get_test_object()
         self.r = objects.Repository()
-        self.r.add_kind(test_kind)
+        self.r.add_package(test_package)
         self.r.add(test_object)
-        self.kt = self.r.get_kind('test.TestKind').tasks
+        self.kt = self.r.get_kind('test2.TestKind').tasks
 
     def test_kind(self):
         self.assertIsInstance(self.kt.kind, objects.Kind)
@@ -529,7 +543,7 @@ class KindTasks(TestCase):
     def test_getitem(self):
         kt = self.kt.__getitem__('_test_task')
         self.assertIsInstance(kt, objects.KindTask)
-        self.assertEqual(kt.name, 'test.TestKind._test_task')
+        self.assertEqual(kt.name, 'test2.TestKind._test_task')
 
     def test_parse_args_dict(self):
         fname, fargs = self.kt.parse_args({'_test_task': {}})
@@ -542,7 +556,7 @@ class KindTasks(TestCase):
         self.assertDictEqual(fargs, {})
 
     def test_invoke(self):
-        obj = self.r['test.TestKind/muhthing']
+        obj = self.r['test2.TestKind/muhthing']
         res = self.kt.invoke(obj, '_test_task')
         self.assertEqual(res, '$$$_test_task_$$$')
 
@@ -550,16 +564,18 @@ class KindTasks(TestCase):
 class KindTask(TestCase):
     def setUp(self):
         self.r = objects.Repository()
-        self.r.add_kind(test_kind)
+        test_package = get_test_package()
+        test_object = get_test_object()
+        self.r.add_package(test_package)
         self.r.add(test_object)
-        self.obj = self.r['test.TestKind/muhthing']
-        self.kt = self.r.get_kind('test.TestKind').tasks['_test_task']
+        self.obj = self.r['test2.TestKind/muhthing']
+        self.kt = self.r.get_kind('test2.TestKind').tasks['_test_task']
 
     def test_init(self):
         pass
 
     def test_name(self):
-        self.assertEqual('test.TestKind._test_task', self.kt.name)
+        self.assertEqual('test2.TestKind._test_task', self.kt.name)
 
     def test_module_name(self):
         self.assertEqual(__name__ + '._test_task', self.kt.module_name)
@@ -578,55 +594,65 @@ class KindTask(TestCase):
 
 class KindObjects(TestCase):
     def setUp(self):
+        test_package = get_test_package()
         self.r = objects.Repository()
-        self.r.add_kind(test_kind)
-        self.kobjs = self.r['test.TestKind']
+        self.r.add_package(test_package)
+        self.kobjs = self.r['test2.TestKind']
 
     def test_init(self):
         self.assertIsInstance(self.kobjs, objects.KindObjects)
 
     def test_query(self):
+        test_object = get_test_object()
         self.r.add(test_object)
         for o in self.kobjs.query(['muhthing']):
             self.assertIsInstance(o, objects.KindObject)
 
     def test_add(self):
+        test_object = get_test_object()
         self.assertNotIn('muhthing', self.kobjs)
         self.r.add(test_object)
         self.assertIn('muhthing', self.kobjs)
 
     def test_remove(self):
+        test_object = get_test_object()
         self.r.add(test_object)
         obj = self.kobjs['muhthing']
         self.r.remove(obj)
         self.assertNotIn('muhthing', self.kobjs)
 
     def test_getitem(self):
+        test_object = get_test_object()
         self.r.add(test_object)
         obj = self.kobjs['muhthing']
         self.assertIsInstance(obj, objects.KindObject)
 
     def test_contains(self):
+        test_object = get_test_object()
         self.r.add(test_object)
         self.assertTrue('muhthing' in self.kobjs)
 
     def test_iter(self):
+        test_object = get_test_object()
         self.r.add(test_object)
         for obj in self.kobjs:
             self.assertIsInstance(obj, objects.KindObject)
 
     def test_len(self):
+        test_object = get_test_object()
         self.r.add(test_object)
         self.assertEqual(len(self.kobjs), 1)
 
 
 class KindObject(TestCase):
     def setUp(self):
+        test_package = get_test_package()
+        test_object = get_test_object()
         self.r = objects.Repository()
-        self.r.add_kind(test_kind)
+        self.r.add_package(test_package)
         self.r.add(test_object)
-        self.obj = self.r['test.TestKind/muhthing']
-        self.kind = self.r.get_kind('test.TestKind')
+        self.obj = self.r['test2.TestKind/muhthing']
+        self.kind = self.r.get_kind('test2.TestKind')
 
     def test_tag(self):
         self.assertEqual(self.obj.tag, 'muhthing')
@@ -638,14 +664,11 @@ class KindObject(TestCase):
         self.assertEqual(self.obj['name'], 'sumpthun')
 
     def test_getitem_resolve_relations(self):
-        ok2 = deepcopy(test_kind)
-        ok2['kind'] += '2'
-        ok2['relations'] = {'sources': 'test.TestKind list'}
-        self.r.add_kind(ok2)
+        ok2 = get_test_package('test3', relations={'sources': 'test2.TestKind list'})
+        self.r.add_package(ok2)
 
-        to2 = deepcopy(test_object)
-        to2['tag'] += '2'
-        to2['kind'] += '2'
+        test_object = get_test_object()
+        to2 = get_test_object('test3', 'TestKind', 'muhthing2')
         to2['sources'] = [test_object['tag']]
         self.r.add(to2)
         obj2 = self.r[to2['kind']][to2['tag']]
@@ -660,24 +683,33 @@ class KindObject(TestCase):
         self.assertEqual(self.obj._data['key'], 'abc')
 
 
+def make_package(package, kind):
+    return {
+        'package': package,
+        'version': '0.0.0',
+        'kinds': [kind]
+    }
+
+
 class RelationList(TestCase):
     def setUp(self):
         self.r = objects.Repository()
-        self.r.add_kind(test_kind)
+        test_package = get_test_package()
+        test_kind = get_test_kind()
+        test_object = get_test_object()
+        self.r.add_package(test_package)
         self.r.add(test_object)
 
-        ok2 = deepcopy(test_kind)
-        ok2['kind'] += '2'
-        ok2['relations'] = {'sources': 'test.TestKind list'}
-        self.r.add_kind(ok2)
+        ok2 = get_test_package('test3', relations={'sources': 'test2.TestKind list'})
+        self.r.add_package(ok2)
 
         to2 = deepcopy(test_object)
         to2['tag'] += '2'
-        to2['kind'] += '2'
+        to2['kind'] = 'test3.TestKind'
         to2['sources'] = [test_object['tag']]
         self.r.add(to2)
 
-        self.obj2 = self.r['test.TestKind2/muhthing2']
+        self.obj2 = self.r['test3.TestKind/muhthing2']
 
     def test_init(self):
         self.assertIsInstance(self.obj2.sources, objects.RelationList)
@@ -693,7 +725,7 @@ class RelationList(TestCase):
         rel = self.obj2.sources['muhthing']
         self.assertIsInstance(rel, objects.Relation)
         muh = rel.required
-        self.assertEqual(muh.get_id(), 'test.TestKind/muhthing')
+        self.assertEqual(muh.get_id(), 'test2.TestKind/muhthing')
 
     def test_len(self):
         self.assertEqual(len(self.obj2.sources), 1)

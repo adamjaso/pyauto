@@ -1,4 +1,4 @@
 regions:
-  '{reg: obj.Region}':
+  '{reg: test.Region}':
     'login':
-    - 'cmd:obj.Region.login {{reg.tag}}'
+    - 'cmd:test.Region.login {{reg.tag}}'

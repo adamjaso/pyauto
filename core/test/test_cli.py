@@ -18,8 +18,8 @@ def run_cli(objects, tasks, kinds, cmd, *args):
     tasks = os.path.join(example, tasks)
     kinds = os.path.join(example, kinds)
     p = Popen(['python', '-m', 'pyauto.core.cli',
-                  '-o', objects, '-t', tasks, '-k', kinds, cmd] + list(args),
-                  stdout=PIPE, stderr=PIPE)
+               '-o', objects, '-t', tasks, '-k', kinds, cmd] + list(args),
+               stdout=PIPE, stderr=PIPE)
     stdout, stderr = p.communicate()
     print('STDERR:', stderr.decode('utf-8'))
     print('STDOUT:', stdout.decode('utf-8'))
@@ -36,4 +36,4 @@ class Cli(TestCase):
         self.assertEqual(p.returncode, 0)
 
     def test_query_dirs(self):
-        p = run_cli('objects', 'tasks.yml', 'kinds', 'query', '{obj.Region:[r1]}')
+        p = run_cli('objects', 'tasks.yml', 'kinds', 'query', '{test.Region:[r1]}')
