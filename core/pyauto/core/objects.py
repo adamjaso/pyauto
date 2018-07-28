@@ -310,14 +310,14 @@ class KindAttributeDetail(object):
     required = True
     list = False
 
-    def __init__(self, name, spec):
+    def __init__(self, package, name, spec):
         if not isinstance(spec, six.string_types):
             raise InvalidKindAttributeDetailException(spec)
         self.name = name
         parts = re.split('\s+', spec)
         for i, part in enumerate(parts):
             if 0 == i:
-                self.kind = part
+                self.kind = package.get_kind_name(part)
             elif 'optional' == part:
                 self.required = False
             elif 'list' == part:
@@ -428,24 +428,25 @@ class Package(object):
     def dependencies(self):
         return self._dependencies
 
-    def validate_dependencies(self):
-        for dep in self._dependencies:
-            pkg = self._repo.get_package(dep)
+    def get_kind_name(self, name):
+        if '.' in name:
+            return name
+        return '.'.join([self.name, name])
+
+    def get_kind(self, name):
+        for kind in self._kinds:
+            if kind.package.name == self.name:
+                return kind
+        raise UnknownKindException(name)
 
     def get(self, item):
         return self._data.get(item, None)
-
-    def set(self, item, value):
-        self._data[item] = value
 
     def __getitem__(self, item):
         return self.get(item)
 
     def __getattr__(self, name):
         return self.get(name)
-
-    def __setitem__(self, item, value):
-        self.set(item, value)
 
 
 class Kind(object):
@@ -458,7 +459,7 @@ class Kind(object):
             for name, a in kind.get('attributes', {}).items()
         ])
         self._relations = OrderedDict([
-            (name, KindAttributeDetail(name, k))
+            (name, KindAttributeDetail(package, name, k))
             for name, k in kind.get('relations', {}).items()
         ])
         for name in self._relations:
@@ -471,6 +472,10 @@ class Kind(object):
     @property
     def name(self):
         return '.'.join([self._package.name, self._kind])
+
+    @property
+    def package(self):
+        return self._package
 
     @property
     def tasks(self):

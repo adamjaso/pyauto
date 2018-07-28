@@ -215,6 +215,43 @@ def _test_task(test_task, **args):
     return '$$$_test_task_$$$'
 
 
+class Package(TestCase):
+    def setUp(self):
+        self.r = objects.Repository()
+        self.r.load_packages(packages_)
+
+    def test_name(self):
+        test = self.r.get_package('test')
+        self.assertEqual(test.name, 'test')
+
+    def test_kinds(self):
+        test = self.r.get_package('test')
+        for kind in test.kinds:
+            self.assertIsInstance(kind, objects.Kind)
+            self.assertEqual(kind.package.name, 'test')
+
+    def test_repo(self):
+        test = self.r.get_package('test')
+        self.assertIsInstance(test.repo, objects.Repository)
+
+    def test_dependencies(self):
+        test = self.r.get_package('test')
+        for dep in test.dependencies:
+            self.r.assert_package(dep)
+
+    def test_get(self):
+        test = self.r.get_package('test')
+        self.assertEqual(test.get('version'), '0.0.0')
+
+    def test_getitem(self):
+        test = self.r.get_package('test')
+        self.assertEqual(test['version'], '0.0.0')
+
+    def test_getattr(self):
+        test = self.r.get_package('test')
+        self.assertEqual(test.version, '0.0.0')
+
+
 class TaskSequenceArguments(TestCase):
     def setUp(self):
         self.r = objects.Repository()
@@ -387,31 +424,36 @@ class KindAttributeDetail(TestCase):
         self.r.load_packages(packages_)
 
     def test_init(self):
-        def_ = objects.KindAttributeDetail('sources', 'test.Directory')
+        test_package = self.r.get_package('test')
+        def_ = objects.KindAttributeDetail(
+            test_package, 'sources', 'test.Directory')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
         self.assertTrue(def_.required)
         self.assertFalse(def_.list)
 
     def test_optional(self):
-        def_ = objects.KindAttributeDetail('sources',
-                                           'test.Directory optional')
+        test_package = self.r.get_package('test')
+        def_ = objects.KindAttributeDetail(
+            test_package, 'sources', 'test.Directory optional')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
         self.assertFalse(def_.required)
         self.assertFalse(def_.list)
 
     def test_list(self):
-        def_ = objects.KindAttributeDetail('sources',
-                                           'test.Directory list')
+        test_package = self.r.get_package('test')
+        def_ = objects.KindAttributeDetail(
+            test_package, 'sources', 'test.Directory list')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
         self.assertTrue(def_.required)
         self.assertTrue(def_.list)
 
     def test_optional_list(self):
-        def_ = objects.KindAttributeDetail('sources',
-                                           'test.Directory optional list')
+        test_package = self.r.get_package('test')
+        def_ = objects.KindAttributeDetail(
+            test_package, 'sources', 'test.Directory optional list')
         self.assertEqual(def_.name, 'sources')
         self.assertEqual(def_.kind, 'test.Directory')
         self.assertFalse(def_.required)
@@ -433,7 +475,9 @@ class KindAttributeDetail(TestCase):
         self.r.add(test_object)
         self.r.add(to2)
 
-        def_ = objects.KindAttributeDetail('sources', 'test2.TestKind list')
+        test_package = self.r.get_package('test')
+        def_ = objects.KindAttributeDetail(
+            test_package, 'sources', 'test2.TestKind list')
         value = def_.get_attribute(to2, self.r)
         for item in value:
             self.assertIsInstance(item.value, objects.KindObject)
@@ -451,7 +495,9 @@ class KindAttributeDetail(TestCase):
         self.r.add(test_object)
 
         to2_ = self.r.add(to2)
-        def_ = objects.KindAttributeDetail('sources', 'test2.TestKind')
+        test_package = self.r.get_package('test')
+        def_ = objects.KindAttributeDetail(
+            test_package, 'sources', 'test2.TestKind')
         with self.assertRaises(objects.KindObjectAttributeException):
             def_.get_attribute(to2, self.r)
         self.r.remove(to2_)
@@ -681,14 +727,6 @@ class KindObject(TestCase):
         self.assertNotIn('key', self.obj._data)
         self.obj['key'] = 'abc'
         self.assertEqual(self.obj._data['key'], 'abc')
-
-
-def make_package(package, kind):
-    return {
-        'package': package,
-        'version': '0.0.0',
-        'kinds': [kind]
-    }
 
 
 class RelationList(TestCase):
