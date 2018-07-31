@@ -18,7 +18,7 @@ def run_cli(objects, tasks, kinds, cmd, *args):
     tasks = os.path.join(example, tasks)
     kinds = os.path.join(example, kinds)
     p = Popen(['python', '-m', 'pyauto.core.cli',
-               '-o', objects, '-t', tasks, '-k', kinds, cmd] + list(args),
+               '-o', objects, '-t', tasks, '-p', kinds, cmd] + list(args),
                stdout=PIPE, stderr=PIPE)
     stdout, stderr = p.communicate()
     print('STDERR:', stderr.decode('utf-8'))

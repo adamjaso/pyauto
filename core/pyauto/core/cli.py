@@ -15,21 +15,21 @@ class Command(object):
     repository = None
     tasks = None
     objects_filename = None
-    kinds_filename = None
+    packages_filename = None
     tasks_filename = None
 
     def __init__(self, repository, objects_filename,
-                 kinds_filename, tasks_filename, dirname=None):
+                 packages_filename, tasks_filename, dirname=None):
         self.repository = repository
         if dirname is not None:
             objects_filename = os.path.join(dirname, objects_filename)
             tasks_filename = os.path.join(dirname, tasks_filename)
-            if kinds_filename is not None:
-                kinds_filename = os.path.join(dirname, kinds_filename)
+            if packages_filename is not None:
+                packages_filename = os.path.join(dirname, packages_filename)
         self.objects_filename = os.path.abspath(objects_filename)
         self.tasks_filename = os.path.abspath(tasks_filename)
-        if kinds_filename is not None:
-            self.kinds_filename = os.path.abspath(kinds_filename)
+        if packages_filename is not None:
+            self.packages_filename = os.path.abspath(packages_filename)
 
     def validate_files(self):
         errors = []
@@ -39,10 +39,10 @@ class Command(object):
             errors.append('Objects file not found: {0}'
                           .format(self.objects_filename))
         try:
-            os.stat(self.kinds_filename)
+            os.stat(self.packages_filename)
         except:
-            errors.append('Kinds file not found: {0}'
-                          .format(self.kinds_filename))
+            errors.append('Packages file not found: {0}'
+                          .format(self.packages_filename))
         if self.tasks_filename is not None:
             try:
                 os.stat(self.tasks_filename)
@@ -59,8 +59,8 @@ class Command(object):
         self.read_tasks()
 
     def read_packages(self):
-        if self.kinds_filename is not None:
-            for obj in self.read_filename(self.kinds_filename):
+        if self.packages_filename is not None:
+            for obj in self.read_filename(self.packages_filename):
                 self.repository.add_package(obj)
         for kind in self.repository.kinds:
             if kind.has_module():
@@ -113,7 +113,7 @@ class Command(object):
     def show_files(self):
         data = OrderedDict([
             ('Kinds', OrderedDict([
-                ('filename', self.kinds_filename),
+                ('filename', self.packages_filename),
                 ('names', [
                     OrderedDict([
                         ('name', k.name),
@@ -149,7 +149,7 @@ def main():
     args.add_argument('-d', dest='dirname')
     args.add_argument('-o', dest='objects_filename', required=True)
     args.add_argument('-t', dest='tasks_filename', required=True)
-    args.add_argument('-k', dest='kinds_filename')
+    args.add_argument('-p', dest='packages_filename', required=True)
 
     parsers = args.add_subparsers(dest='action')
     run = parsers.add_parser('run')
@@ -160,7 +160,7 @@ def main():
     args = args.parse_args()
 
     r = objects.Repository()
-    cmd = Command(r, args.objects_filename, args.kinds_filename,
+    cmd = Command(r, args.objects_filename, args.packages_filename,
                   args.tasks_filename, dirname=args.dirname)
     cmd.validate_files()
     cmd.load()
