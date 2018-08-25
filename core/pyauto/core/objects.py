@@ -1,14 +1,12 @@
 import os
 import re
 import six
-import json
 import shlex
 import jinja2
 import itertools
 import importlib
 from copy import deepcopy
 from pyauto.util import yamlutil
-from pyauto.util import uriutil
 from collections import OrderedDict
 
 
@@ -155,6 +153,7 @@ class TaskSequence(object):
 class Repository(object):
     def __init__(self):
         self._data = OrderedDict()
+        self._wrapped = OrderedDict()
         self._packages = OrderedDict()
 
     @property
@@ -208,6 +207,13 @@ class Repository(object):
     def assert_object(self, kind, tag):
         self.assert_kind(kind)
         self._data[kind].assert_object(tag)
+
+    def wrap_object(self, kind_object):
+        if kind_object.tag in self._wrapped:
+            return self._wrapped[kind_object.tag]
+        self._wrapped[kind_object.tag] = kind_object.kind\
+            .get_module()(kind_object)
+        return self.wrap_object(kind_object)
 
     def get(self, ref):
         if not isinstance(ref, Reference):
@@ -526,23 +532,14 @@ class Kind(object):
         else:
             return obj.get(name)
 
-    def get_class(self):
-        if 'class' not in self:
-            return KindAPI
-        parts = self['class'].split('.')
-        module_name = '.'.join(parts[:-1])
-        class_name = parts[-1]
-        module = importlib.import_module(module_name)
-        return getattr(module, class_name)
-
-    def has_class(self):
-        return 'class' in self
-
-    def wrap_object(self, obj):
-        return self.get_class()(obj)
-
     def get_module(self):
-        return importlib.import_module(self['module'])
+        try:
+            return importlib.import_module(self['module'])
+        except ImportError:
+            parts = self['module'].split('.')
+            module_name, func_name = '.'.join(parts[:-1]), parts[-1]
+            module = importlib.import_module(module_name)
+            return getattr(module, func_name)
 
     def has_module(self):
         return 'module' in self
@@ -606,7 +603,6 @@ class KindTask(object):
         self._tasks = tasks
         self._module = module
         self._task = task
-        self._function = getattr(module, task)
 
     @property
     def name(self):
@@ -621,7 +617,7 @@ class KindTask(object):
         return self._tasks
 
     def invoke(self, obj, **args):
-        return self._function(obj, **args)
+        return getattr(obj.wrapped, self._task)(**args)
 
     def __call__(self, obj, **args):
         return self.invoke(obj, **args)
@@ -699,10 +695,6 @@ class KindObject(object):
         self._data = obj
 
     @property
-    def api(self):
-        return self._kind.wrap_object(self)
-
-    @property
     def tag(self):
         return self['tag']
 
@@ -713,6 +705,10 @@ class KindObject(object):
     @property
     def data(self):
         return self._data
+
+    @property
+    def wrapped(self):
+        return self._repo.wrap_object(self)
 
     def set_repo(self, repo):
         self._repo = repo
@@ -747,25 +743,6 @@ class KindObject(object):
     def get_id(self):
         return '/'.join([self.kind.name, self.tag])
 
-    def invoke(self, args, **kwargs):
-        if len(kwargs) > 0:
-            args = {args: kwargs}
-        return self._kind.tasks.invoke(self, args)
-
-
-class KindAPI(object):
-    def __init__(self, kind_object):
-        self._kind_object = kind_object
-
-    def __getitem__(self, name):
-        self._kind_object.get(name)
-
-    def __getattr__(self, name):
-        return self._kind_object.get(name)
-
-    def __setitem__(self, name, value):
-        self._kind_object.set(name, value)
-
 
 class RelationList(object):
     def __init__(self, parent, name, items):
@@ -799,7 +776,7 @@ class RelationList(object):
             yield Relation(self._parent, self._name, item)
 
     def __contains__(self, tag):
-        return len(_ for item in self.required if item.tag == tag) > 0
+        return len(item for item in self.required if item.tag == tag) > 0
 
     def __bool__(self):
         return self._items is not None

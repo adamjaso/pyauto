@@ -37,3 +37,5 @@ class Cli(TestCase):
 
     def test_query_dirs(self):
         p = run_cli('objects', 'tasks.yml', 'kinds', 'query', '{test.Region:[r1]}')
+        self.assertEqual(p.returncode, 0)
+

@@ -13,7 +13,7 @@ packages_ = """
   - test
   kinds:
   - kind: Region
-    module: test.test_objects
+    module: test.test_objects.Region
     attributes:
       url: string
       user: string
@@ -21,14 +21,14 @@ packages_ = """
     tasks:
     - login
   - kind: App
-    module: test.test_objects
+    module: test.test_objects.App
     attributes:
       org: string
       space: string
     relations:
       source: test.Directory
   - kind: RegionApp
-    module: test.test_objects
+    module: test.test_objects.RegionApp
     relations:
       app: test.App
       region: test.Region
@@ -36,7 +36,7 @@ packages_ = """
     tasks:
     - deploy
   - kind: Directory
-    module: test.test_objects
+    module: test.test_objects.Directory
     attributes:
       name: string
     relations:
@@ -153,8 +153,7 @@ objects_ = list(yamlutil.load_dict(objects_, load_all=True))
 def get_test_kind(name=None, attributes=None, relations=None):
     return {
         'kind': name or 'TestKind',
-        'module': 'test.test_objects',
-        'class': 'test.test_objects.TestKind',
+        'module': 'test.test_objects.TestKind',
         'attributes': attributes or {
             'name': 'string',
         },
@@ -187,32 +186,47 @@ def get_test_object(package='test2', kind='TestKind', tag='muhthing', **kwargs):
     return obj
 
 
-class TestKind(objects.KindAPI):
-    pass
+class Region(object):
+    def __init__(self, obj):
+        pass
+
+    def login(self, **kwargs):
+        pass
 
 
-def login(region, **args):
-    pass
+class App(object):
+    def __init__(self, obj):
+        pass
 
 
-def deploy(app, **args):
-    pass
+class RegionApp(object):
+    def __init__(self, obj):
+        pass
+
+    def deploy(self, **kwargs):
+        pass
 
 
-def rmtree(dir_, **args):
-    pass
+class Directory(object):
+    def __init__(self, obj):
+        pass
+
+    def rmtree(self, **kwargs):
+        pass
+
+    def copytree(self, **kwargs):
+        pass
+
+    def render_templates(self, **kwargs):
+        pass
 
 
-def copytree(dir_, **args):
-    pass
+class TestKind(object):
+    def __init__(self, obj):
+        pass
 
-
-def render_templates(dir_, **args):
-    return 'rendered!'
-
-
-def _test_task(test_task, **args):
-    return '$$$_test_task_$$$'
+    def _test_task(self, **args):
+        return '$$$_test_task_$$$'
 
 
 class Package(TestCase):
@@ -559,17 +573,15 @@ class Kind(TestCase):
     def test_contains(self):
         pass
 
-    def test_get_class(self):
-        self.assertEqual(self.kind.get_class(), TestKind)
-
-    def test_wrap_object(self):
-        test_object = get_test_object()
-        obj = self.kind.wrap_object(test_object)
-        self.assertIsInstance(obj, objects.KindAPI)
-
     def test_get_module(self):
-        self.assertEqual(sys.modules[__name__], self.kind.get_module())
+        self.assertEqual(TestKind, self.kind.get_module())
 
+    def test_get_module_attr(self):
+        test_package = get_test_package('test3')
+        self.r.add_package(test_package)
+        self.r.get_kind('test3.TestKind')._data['module'] = 'test.test_objects.KindTasks'
+        mod = self.r.get_kind('test3.TestKind').get_module()
+        self.assertEqual(mod, KindTasks)
 
 class KindTasks(TestCase):
     def setUp(self):
@@ -624,7 +636,7 @@ class KindTask(TestCase):
         self.assertEqual('test2.TestKind._test_task', self.kt.name)
 
     def test_module_name(self):
-        self.assertEqual(__name__ + '._test_task', self.kt.module_name)
+        self.assertEqual('TestKind._test_task', self.kt.module_name)
 
     def test_tasks(self):
         self.assertIsInstance(self.kt.tasks, objects.KindTasks)
