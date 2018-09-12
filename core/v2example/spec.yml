@@ -1,0 +1,11 @@
+packages:
+- module: v2example.test
+tasks:
+  t1:
+    '{arg: pkg1.T1}':
+      default:
+      - cmd:pkg1.T1.inspect {{arg.tag}}
+  t2:
+    '{arg: pkg1.T2}':
+      default:
+      - cmd:pkg1.T2.inspect {{arg.tag}}

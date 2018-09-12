@@ -1,4 +1,11 @@
+import os
 import json
+from pyauto.util import yamlutil
+
+
+dirname = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(dirname, 'pkg_.yml')) as f:
+    packages = [pkg for pkg in yamlutil.load_dict(f, load_all=True)]
 
 
 class Base(object):

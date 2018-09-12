@@ -3,9 +3,14 @@ import sys
 from unittest import TestCase
 from pyauto.core import cli
 from subprocess import Popen, PIPE
+from pyauto.util import yamlutil
 
 dirname = os.path.dirname(os.path.abspath(__file__))
 example = os.path.join(dirname, 'objects-example')
+
+
+with open(os.path.join(example, 'kinds.yml')) as f:
+    packages = [pkg for pkg in yamlutil.load_dict(f, load_all=True)]
 
 
 def login(region, **args):
@@ -28,14 +33,14 @@ def run_cli(objects, tasks, kinds, cmd, *args):
 
 class Cli(TestCase):
     def test_run_files(self):
-        p = run_cli('objects.yml', 'tasks.yml', 'kinds.yml', 'run', '{reg:[r1]}', 'regions.login')
+        p = run_cli('objects.yml', 'tasks.yml', 'pkg.yml', 'run', '{reg:[r1]}', 'regions.login')
         self.assertEqual(p.returncode, 0)
 
     def test_run_dirs(self):
-        p = run_cli('objects', 'tasks.yml', 'kinds', 'run', '{reg:[r1]}', 'regions.login')
+        p = run_cli('objects', 'tasks.yml', 'pkg.yml', 'run', '{reg:[r1]}', 'regions.login')
         self.assertEqual(p.returncode, 0)
 
     def test_query_dirs(self):
-        p = run_cli('objects', 'tasks.yml', 'kinds', 'query', '{test.Region:[r1]}')
+        p = run_cli('objects', 'tasks.yml', 'pkg.yml', 'query', '{test.Region:[r1]}')
         self.assertEqual(p.returncode, 0)
 

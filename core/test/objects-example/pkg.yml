@@ -1,0 +1,2 @@
+packages:
+- module: test.test_cli

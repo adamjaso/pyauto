@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+import importlib
 from collections import OrderedDict
 from pyauto.util import yamlutil
 from . import objects
@@ -9,6 +10,22 @@ from . import objects
 def write(*args):
     sys.stdout.write(' '.join([str(arg) for arg in args]))
     sys.stdout.flush()
+
+
+class Packages(object):
+    def __init__(self, data):
+        self.module = importlib.import_module(data['module'])
+        if not hasattr(self.module, 'packages'):
+            raise PyautoException('Module is not a package: "{0}"'
+                                  .format(data['module']))
+        if not isinstance(self.module.packages, list):
+            raise PyautoException('Module "packages" is not a list: "{0}"'
+                                  .format(self.module.package))
+        self.data = self.module.packages
+
+    def __iter__(self):
+        for item in self.data:
+            yield item
 
 
 class Command(object):
@@ -60,8 +77,8 @@ class Command(object):
 
     def read_packages(self):
         if self.packages_filename is not None:
-            for obj in self.read_filename(self.packages_filename):
-                self.repository.add_package(obj)
+            for package in self._read_packages(self.packages_filename):
+                self.repository.add_package(package)
         for kind in self.repository.kinds:
             if kind.has_module():
                 mod = kind.get_module()
@@ -81,6 +98,13 @@ class Command(object):
         with open(self.tasks_filename) as f:
             tasks = yamlutil.load_dict(f)
         self.tasks = objects.TaskSequences(self.repository, tasks)
+
+    def _read_packages(self, fn):
+        with open(fn) as f:
+            data = yamlutil.load_dict(f)
+            for item in data['packages']:
+                for pkg in Packages(item):
+                    yield pkg
 
     def read_filename(self, fn):
         if os.path.isfile(fn):
