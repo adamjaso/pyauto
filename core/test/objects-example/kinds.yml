@@ -3,6 +3,6 @@ package: test
 version: 0.0.0
 kinds:
 - kind: Region
-  module: test.test_objects.Region
+  configs: test.test_objects.Region
   tasks:
   - login

@@ -1,6 +1,7 @@
 import os
 import re
 import six
+import time
 import shlex
 import jinja2
 import itertools
@@ -8,6 +9,39 @@ import importlib
 from copy import deepcopy
 from pyauto.util import yamlutil
 from collections import OrderedDict
+
+
+def read_packages(filename, neighbor=None):
+
+    def _read_packages(filename):
+        if os.path.isfile(filename):
+            with open(filename) as f:
+                for item in yamlutil.load_dict(f, load_all=True):
+                    if isinstance(item, list):
+                        for obj in item:
+                            yield obj
+                    else:
+                        yield item
+        elif os.path.isdir(filename):
+            for dirpath, dirnames, filenames in os.walk(filename):
+                for filename in filenames:
+                    filename = os.path.join(dirpath, filename)
+                    with open(filename) as f:
+                        for item in yamlutil.load_dict(f, load_all=True):
+                            if isinstance(item, list):
+                                for obj in item:
+                                    yield obj
+                            else:
+                                yield item
+        else:
+            raise PyautoException('Not a file or directory: {0}'
+                                  .format(filename))
+
+    if neighbor is not None:
+        filename = os.path.join(
+            os.path.dirname(os.path.abspath(filename)), neighbor)
+
+    return list(_read_packages(filename))
 
 
 class TaskSequenceArguments(object):
@@ -59,11 +93,12 @@ class TaskSequences(object):
         self._repo = repo
         self._tasks = OrderedDict()
         for group, definition in tasks.items():
-            args = next(iter(definition.keys()))
-            args = TaskSequenceArguments(repo, args)
-            for task, sequence in next(iter(definition.values())).items():
-                name = '.'.join([group, task])
-                self._tasks[name] = TaskSequence(self, name, args, sequence)
+            for args, definition in definition.items():
+                args = TaskSequenceArguments(repo, args)
+                for task, sequence in definition.items():
+                    name = '.'.join([group, task])
+                    self._tasks[name] = TaskSequence(
+                        self, name, args, sequence)
 
     def items(self):
         return self._tasks.items()
@@ -126,11 +161,23 @@ class TaskSequence(object):
             raise UnknownTaskSequenceTypeException(
                 'Unknown task type: {0}'.format(parts[0]))
 
-    def invoke(self, args):
+    def invoke(self, args, inspect=False):
         tasks = []
         self.resolve(args, tasks)
         for kt, ko in tasks:
-            kt.invoke(ko)
+            if inspect:
+                yield ' '.join([kt.name, ko.ref])
+            else:
+                start = time.time()
+                res = kt.invoke(ko)
+                duration = time.time() - start
+                yield OrderedDict([
+                    ('task', kt.name),
+                    ('obj', ko.ref),
+                    ('time', start),
+                    ('duration', duration),
+                    ('result', res),
+                ])
 
     def resolve(self, args, resolved):
         for task in self._sequence:
@@ -153,7 +200,6 @@ class TaskSequence(object):
 class Repository(object):
     def __init__(self):
         self._data = OrderedDict()
-        self._wrapped = OrderedDict()
         self._packages = OrderedDict()
 
     @property
@@ -207,13 +253,6 @@ class Repository(object):
     def assert_object(self, kind, tag):
         self.assert_kind(kind)
         self._data[kind].assert_object(tag)
-
-    def wrap_object(self, kind_object):
-        if kind_object.tag in self._wrapped:
-            return self._wrapped[kind_object.tag]
-        self._wrapped[kind_object.tag] = kind_object.kind\
-            .get_module()(kind_object)
-        return self.wrap_object(kind_object)
 
     def get(self, ref):
         if not isinstance(ref, Reference):
@@ -310,6 +349,20 @@ class Reference(object):
             self.tag = parts[1]
 
 
+class TaskReference(object):
+    kind = None
+    name = None
+
+    def __init__(self, ref):
+        if not isinstance(ref, six.string_types):
+            raise InvalidKindTaskReferenceException(ref)
+        parts = ref.split('.')
+        if len(parts) != 3:
+            raise InvalidKindTaskReferenceException(ref)
+        self.kind = '.'.join(parts[:2])
+        self.name = parts[2]
+
+
 class KindAttributeDetail(object):
     kind = None
     name = None
@@ -364,6 +417,8 @@ class AttributeDetail(object):
         'string': six.text_type,
         'path': os.path.abspath,
         'envvar': os.getenv,
+        'list': list,
+        'map': OrderedDict
     }
     _parse = None
     kind = None
@@ -460,6 +515,8 @@ class Kind(object):
         self._package = package
         self._data = kind
         self._kind = kind['kind']
+        self.config_class = self._get_config_class()
+        self.command_class = self._get_command_class()
         self._attributes = OrderedDict([
             (name, AttributeDetail(self, name, a))
             for name, a in kind.get('attributes', {}).items()
@@ -532,31 +589,45 @@ class Kind(object):
         else:
             return obj.get(name)
 
-    def get_module(self):
-        try:
-            return importlib.import_module(self['module'])
-        except ImportError:
-            parts = self['module'].split('.')
-            module_name, func_name = '.'.join(parts[:-1]), parts[-1]
-            module = importlib.import_module(module_name)
-            return getattr(module, func_name)
+    def _get_config_class(self):
+        if 'configs' not in self:
+            raise InvalidKindException(
+                'Kind does not provide "configs": {0}'.format(self.name))
+        parts = self['configs'].split('.')
+        module_name, func_name = '.'.join(parts[:-1]), parts[-1]
+        module = importlib.import_module(module_name)
+        if not hasattr(module, func_name):
+            raise InvalidKindException(
+                'Kind "config" with name "{0}" was not found'
+                .format(self['configs']))
+        return getattr(module, func_name)
 
-    def has_module(self):
-        return 'module' in self
+    def _get_command_class(self):
+        if 'commands' not in self:
+            return self._get_config_class()
+        parts = self['commands'].split('.')
+        module_name, func_name = '.'.join(parts[:-1]), parts[-1]
+        module = importlib.import_module(module_name)
+        if not hasattr(module, func_name):
+            raise InvalidKindException(
+                'Kind "commands" with name "{0}" was not found'
+                .format(self['config']))
+        return getattr(module, func_name)
 
 
 class KindTasks(object):
     def __init__(self, kind, tasks):
         tasks = tasks or []
         self._kind = kind
+        self._command_class = self._kind.command_class
         self._tasks = OrderedDict()
         for task in tasks:
             if isinstance(task, six.string_types):
-                module = self._kind.get_module()
-                if not hasattr(module, task):
+                if not hasattr(self._command_class, task):
                     raise UnknownKindObjectTaskException(
-                        'Module task not found: {0}'.format(task))
-                self._tasks[task] = KindTask(self, module, task)
+                        'Module task not found: {0} for class {1}'.format(
+                            task, self._command_class))
+                self._tasks[task] = KindTask(self, self._command_class, task)
             else:
                 raise InvalidKindObjectTaskException(
                     'Invalid task spec: {0}'.format(task))
@@ -617,7 +688,10 @@ class KindTask(object):
         return self._tasks
 
     def invoke(self, obj, **args):
-        return getattr(obj.wrapped, self._task)(**args)
+        if type(obj) == self._module:
+            return getattr(obj, self._task)(**args)
+        else:
+            return getattr(self._module, self._task)(obj, **args)
 
     def __call__(self, obj, **args):
         return self.invoke(obj, **args)
@@ -658,7 +732,7 @@ class KindObjects(object):
 
     def add(self, obj):
         if not isinstance(obj, KindObject):
-            obj = KindObject(self._repo, obj)
+            obj = self.kind.config_class(self._repo, obj)
         if obj.tag in self._items:
             raise DuplicateKindObjectException(kind_tag=obj.get_id())
         self._items[obj.tag] = obj
@@ -695,6 +769,10 @@ class KindObject(object):
         self._data = obj
 
     @property
+    def ref(self):
+        return '/'.join([self.kind.name, self.tag])
+
+    @property
     def tag(self):
         return self['tag']
 
@@ -705,10 +783,6 @@ class KindObject(object):
     @property
     def data(self):
         return self._data
-
-    @property
-    def wrapped(self):
-        return self._repo.wrap_object(self)
 
     def set_repo(self, repo):
         self._repo = repo
@@ -877,6 +951,12 @@ class InvalidKindObjectReferenceException(PyautoException):
     def __init__(self, tag):
         msg = 'Invalid object tag: {0}'.format(tag)
         super(InvalidKindObjectReferenceException, self).__init__(msg)
+
+
+class InvalidKindTaskReferenceException(PyautoException):
+    def __init__(self, ref):
+        msg = 'Invalid task reference: {0}'.format(ref)
+        super(InvalidKindTaskReferenceException, self).__init__(msg)
 
 
 class InvalidKindAttributeDetailException(PyautoException):

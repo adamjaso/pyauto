@@ -2,14 +2,14 @@
 package: pkg1
 kinds:
 - kind: T1
-  module: v2example.test.T1
+  configs: v2example.test.T1
   attributes:
     a: string
     b: string
   tasks:
   - inspect
 - kind: T2
-  module: v2example.test.T2
+  configs: v2example.test.T2
   attributes:
     c: string
     d: string
@@ -21,14 +21,14 @@ kinds:
 package: pkg2
 kinds:
 - kind: T3
-  module: v2example.test.T3
+  configs: v2example.test.T3
   attributes:
     f: string
     g: string
   relations:
     h: pkg1.T2
 - kind: T4
-  module: v2example.test.T4
+  configs: v2example.test.T4
   attributes:
     i: string
     j: string

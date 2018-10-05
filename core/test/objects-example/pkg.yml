@@ -1,2 +1,2 @@
 packages:
-- module: test.test_cli
+- module: test.test_tool

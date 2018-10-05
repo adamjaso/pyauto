@@ -1,10 +1,24 @@
 import os
 import sys
+import logging
 import argparse
 import importlib
+from logging import StreamHandler
 from collections import OrderedDict
 from pyauto.util import yamlutil
-from . import objects
+from . import api
+
+
+logger = logging.getLogger('pyauto.core')
+
+
+def setup_logger(logger):
+    formatter = logging.Formatter('%(message)s')
+    handler = StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
 
 def write(*args):
@@ -16,11 +30,13 @@ class Packages(object):
     def __init__(self, data):
         self.module = importlib.import_module(data['module'])
         if not hasattr(self.module, 'packages'):
-            raise PyautoException('Module is not a package: "{0}"'
-                                  .format(data['module']))
+            raise api.PyautoException(
+                'Module is not a package: "{0}"'
+                .format(data['module']))
         if not isinstance(self.module.packages, list):
-            raise PyautoException('Module "packages" is not a list: "{0}"'
-                                  .format(self.module.package))
+            raise api.PyautoException(
+                'Module "packages" is not a list: "{0}"'
+                .format(self.module.packages))
         self.data = self.module.packages
 
     def __iter__(self):
@@ -79,25 +95,15 @@ class Command(object):
         if self.packages_filename is not None:
             for package in self._read_packages(self.packages_filename):
                 self.repository.add_package(package)
-        for kind in self.repository.kinds:
-            if kind.has_module():
-                mod = kind.get_module()
-                kindobjs = getattr(mod, 'kinds', [])
-                if not isinstance(kindobjs, list):
-                    raise objects.PyautoException(
-                        'Module kinds must be provided as a list: {0}.kinds = {1}'
-                        .format(mod.__name__, kindobjs))
-                for kindobj in kindobjs:
-                    self.repository.add_package(kindobj)
 
     def read_objects(self):
-        for obj in self.read_filename(self.objects_filename):
+        for obj in api.read_packages(self.objects_filename):
             self.repository.add(obj)
 
     def read_tasks(self):
         with open(self.tasks_filename) as f:
             tasks = yamlutil.load_dict(f)
-        self.tasks = objects.TaskSequences(self.repository, tasks)
+        self.tasks = api.TaskSequences(self.repository, tasks)
 
     def _read_packages(self, fn):
         with open(fn) as f:
@@ -106,33 +112,15 @@ class Command(object):
                 for pkg in Packages(item):
                     yield pkg
 
-    def read_filename(self, fn):
-        if os.path.isfile(fn):
-            with open(fn) as f:
-                for item in yamlutil.load_dict(f, load_all=True):
-                    if isinstance(item, list):
-                        for obj in item:
-                            yield obj
-                    else:
-                        yield item
-        elif os.path.isdir(fn):
-            for dirpath, dirnames, filenames in os.walk(fn):
-                for filename in filenames:
-                    filename = os.path.join(dirpath, filename)
-                    with open(filename) as f:
-                        for item in yamlutil.load_dict(f, load_all=True):
-                            if isinstance(item, list):
-                                for obj in item:
-                                    yield obj
-                            else:
-                                yield item
-        else:
-            raise objects.PyautoException('Not a file or directory: {0}'
-                                          .format(fn))
-
-    def invoke_task_sequence(self, targets, task):
+    def invoke_task_sequence(self, targets, task, inspect=False):
         obj = yamlutil.load_dict(targets)
-        return self.tasks[task].invoke(obj)
+        return self.tasks[task].invoke(obj, inspect=inspect)
+
+    def invoke_kind_task(self, kind_task, tag, args):
+        ref = api.TaskReference(kind_task)
+        obj = self.repository[ref.kind][tag]
+        args = yamlutil.load_dict(args or '{}')
+        return self.repository[ref.kind].kind.tasks[ref.name].invoke(obj, **args)
 
     def show_files(self):
         data = OrderedDict([
@@ -160,15 +148,29 @@ class Command(object):
                     name for name, _ in self.tasks.items()])
             ])),
         ])
-        write(yamlutil.dump_dict(data))
+        logger.debug(yamlutil.dump_dict(data))
 
-    def run_query(self, selector):
+    def run_query(self, selector, verbose):
         q = yamlutil.load_dict(selector)
         res = self.repository.query(q, id=True)
-        write(yamlutil.dump_dict([o for o in res]))
+        if verbose:
+            res = [self.repository[tag].data for tag in res]
+        logger.debug(yamlutil.dump_dict([o for o in res]))
+
+    def invoke_task(self, args):
+        parts = args.task.split(':')
+        if 'cmd' == parts[0]:
+            res = self.invoke_kind_task(parts[1], args.targets, args.args)
+            logger.debug(res)
+
+        elif 'task' == parts[0]:
+            for res in self.invoke_task_sequence(args.targets, parts[1],
+                                                 inspect=args.inspect):
+                logger.debug(yamlutil.dump_dict([res]))
 
 
 def main():
+    setup_logger(logger)
     args = argparse.ArgumentParser()
     args.add_argument('-d', dest='dirname')
     args.add_argument('-o', dest='objects_filename', required=True)
@@ -179,19 +181,23 @@ def main():
     run = parsers.add_parser('run')
     run.add_argument('targets')
     run.add_argument('task')
+    run.add_argument('-a', '--args', dest='args', default='{}',
+                     type=yamlutil.load_dict)
+    run.add_argument('-i', '--inspect', dest='inspect', action='store_true')
     query = parsers.add_parser('query')
     query.add_argument('selector')
+    query.add_argument('-v', '--verbose', dest='verbose', action='store_true')
     args = args.parse_args()
 
-    r = objects.Repository()
+    r = api.Repository()
     cmd = Command(r, args.objects_filename, args.packages_filename,
                   args.tasks_filename, dirname=args.dirname)
     cmd.validate_files()
     cmd.load()
     if 'run' == args.action:
-        cmd.invoke_task_sequence(args.targets, args.task)
+        cmd.invoke_task(args)
     elif 'query' == args.action:
-        cmd.run_query(args.selector)
+        cmd.run_query(args.selector, args.verbose)
     else:
         cmd.show_files()
 

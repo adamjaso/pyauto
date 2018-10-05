@@ -1,7 +1,7 @@
 import os
 import sys
 from unittest import TestCase
-from pyauto.core import cli
+from pyauto.core import tool, api
 from subprocess import Popen, PIPE
 from pyauto.util import yamlutil
 
@@ -18,11 +18,11 @@ def login(region, **args):
     pass
 
 
-def run_cli(objects, tasks, kinds, cmd, *args):
+def run_tool(objects, tasks, kinds, cmd, *args):
     objects = os.path.join(example, objects)
     tasks = os.path.join(example, tasks)
     kinds = os.path.join(example, kinds)
-    p = Popen(['python', '-m', 'pyauto.core.cli',
+    p = Popen(['python', '-m', 'pyauto.core.tool',
                '-o', objects, '-t', tasks, '-p', kinds, cmd] + list(args),
                stdout=PIPE, stderr=PIPE)
     stdout, stderr = p.communicate()
@@ -31,16 +31,20 @@ def run_cli(objects, tasks, kinds, cmd, *args):
     return p
 
 
+class Region(api.KindObject):
+    pass
+
+
 class Cli(TestCase):
     def test_run_files(self):
-        p = run_cli('objects.yml', 'tasks.yml', 'pkg.yml', 'run', '{reg:[r1]}', 'regions.login')
+        p = run_tool('objects.yml', 'tasks.yml', 'pkg.yml', 'run', '{reg:[r1]}', 'regions.login')
         self.assertEqual(p.returncode, 0)
 
     def test_run_dirs(self):
-        p = run_cli('objects', 'tasks.yml', 'pkg.yml', 'run', '{reg:[r1]}', 'regions.login')
+        p = run_tool('objects', 'tasks.yml', 'pkg.yml', 'run', '{reg:[r1]}', 'regions.login')
         self.assertEqual(p.returncode, 0)
 
     def test_query_dirs(self):
-        p = run_cli('objects', 'tasks.yml', 'pkg.yml', 'query', '{test.Region:[r1]}')
+        p = run_tool('objects', 'tasks.yml', 'pkg.yml', 'query', '{test.Region:[r1]}')
         self.assertEqual(p.returncode, 0)
 
