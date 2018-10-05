@@ -1,4 +1,4 @@
 PyYAML
 jmespath
-pyauto.core>=0.0.6
+pyauto.core>=1.0.0a7
 pyauto.util>=0.0.3a3

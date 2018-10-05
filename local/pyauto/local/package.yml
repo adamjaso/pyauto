@@ -1,0 +1,65 @@
+---
+package: file
+version: 0.0.0
+kinds:
+
+- kind: Config
+  configs: pyauto.local.config.Config
+  attributes:
+    workspace_dir: string
+    template_dir: string optional
+  relations:
+    templates: Template list optional
+    destinations: Directory list optional
+    sources: Directory list optional
+  tasks:
+  - get_path
+  - init_workspace
+
+- kind: Directory
+  configs: pyauto.local.config.Directory
+  attributes:
+    name: string
+    ignore: list optional
+  relations:
+    root: Config optional
+    source: Directory optional
+  tasks:
+  - get_path
+  - remove_dir
+  - copy_dir
+
+- kind: File
+  configs: pyauto.local.config.File
+  attributes:
+    name: string
+  relations:
+    root: Config optional
+    directory: Directory optional
+    source: File optional
+    template: File optional
+    variables: Variable list optional
+  tasks:
+  - get_path
+  - remove_file
+  - copy_file
+  - render_template
+  - resolve_variables
+
+- kind: Variable
+  configs: pyauto.local.config.Variable
+  attributes:
+    name: string optional
+    select: string optional
+    parse: string optional
+    default: string optional
+
+    envvar: string optional
+    function: string optional
+    map: map optional
+    string: string optional
+  relations:
+    variable: Variable optional
+    file: File optional
+  tasks:
+  - resolve

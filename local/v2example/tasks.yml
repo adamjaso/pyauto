@@ -1,0 +1,24 @@
+workspaces:
+  '{}':
+    init:
+    - cmd:file.Config.init_workspace main
+    copyself:
+    - cmd:file.Directory.copy_dir copy
+    removeself:
+    - cmd:file.Directory.remove_dir copy
+    copyfirst:
+    - cmd:file.File.copy_file firstfile
+    removefirst:
+    - cmd:file.File.remove_file firstfile
+    render:
+    - cmd:file.File.render_template myrendered
+    removerender:
+    - cmd:file.File.remove_file myrendered
+    provision:
+    - task:workspaces.init
+    - task:workspaces.removeself
+    - task:workspaces.copyself
+    - task:workspaces.removefirst
+    - task:workspaces.copyfirst
+    - task:workspaces.removerender
+    - task:workspaces.render

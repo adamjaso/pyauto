@@ -3,208 +3,130 @@ import json
 import shutil
 import jmespath
 from collections import OrderedDict
-from pyauto.core import config, tasks
+from pyauto.core import api
 from pyauto.util import strutil, funcutil, yamlutil
-from pyauto.util.j2util import get_template_renderer
+from jinja2 import Environment
 
 
-class Local(config.Config):
-    def __init__(self, config, **kwargs):
-        super(Local, self).__init__(config, **kwargs)
-        if 'workspace_dir' in self:
-            self['workspace_dir'] = self.get_path(self['workspace_dir'])
-        if 'template_dir' in self:
-            self['template_dir'] = self.get_path(self['template_dir'])
-            self.render_template = get_template_renderer(self['template_dir'])
-            self['templates'] = [
-                Template(t, self) for t in self.get('templates', [])]
-        if 'sources' in self:
-            self['sources'] = [
-                Source(s, self) for s in self['sources']]
-        if 'destinations' in self:
-            self['destinations'] = [
-                Destination(d, self) for d in self['destinations']]
+packages = api.read_packages(__file__, 'package.yml')
+
+
+class Config(api.KindObject):
+    def get_path(self, *fn):
+        workspace_dir = os.path.abspath(self.workspace_dir)
+        return os.path.normpath(os.path.join(workspace_dir, *fn))
 
     def init_workspace(self):
-        workspace_dir = self.get_workspace_path()
+        workspace_dir = self.get_path()
         if not os.path.isdir(workspace_dir):
             os.makedirs(workspace_dir)
 
-    def get_template(self, template):
-        for t in self.templates:
-            if t.get_id() == template:
-                return t
-        raise Exception('unknown template: {0}'.format(template))
 
-    def get_template_file(self, *fn):
-        return os.path.join(self['template_dir'], *fn)
-
-    def get_source_path(self, source_id, *path):
-        return self.get_source(source_id).get_path(*path)
-
-    def get_destination_path(self, destination_id, *path):
-        return self.get_destination(destination_id).get_path(*path)
-
-    def get_workspace_path(self, *fn):
-        return os.path.join(self['workspace_dir'], *fn)
-
-    def get_destination(self, id):
-        for dest in self.destinations:
-            if dest.get_id() == id:
-                return dest
-        raise Exception('unknown local.destination: {0}'.format(id))
-
-    def get_source(self, id):
-        for src in self.sources:
-            if src.get_id() == id:
-                return src
-        raise Exception('unknown local.source: {0}'.format(id))
-
-    def copytree(self, src_id, dst_id, **kwargs):
-        src = self.get_source(src_id)
-        src_dir = src.get_path()
-        dst_dir = self.get_destination(dst_id).get_path()
-        if 'ignore' not in kwargs:
-            kwargs['ignore'] = []
-        kwargs['ignore'].append('.git')
-        kwargs['ignore'].extend(list(src.get('ignore', [])))
-        kwargs['ignore'] = shutil.ignore_patterns(*kwargs['ignore'])
-        return strutil.copytree(src_dir, dst_dir, **kwargs)
-
-    def rmtree(self, dst_id):
-        return self.get_destination(dst_id).rmtree()
-
-
-class Source(config.Config):
-    def get_path(self, *path):
-        base_path = self.config.config.get_path(self.directory)
-        return os.path.join(base_path, *path)
-
-
-class Destination(config.Config):
-    def __init__(self, config, parent=None):
-        super(Destination, self).__init__(config, parent)
-        if 'source' in self:
-            self['source'] = self.config.get_source(self['source'])
-        self['templates'] = [
-            Template(t, self) for t in self.get('templates', [])]
-
-    def get_template(self, template):
-        for t in self.templates:
-            if t.get_id() == template:
-                return t
-        raise Exception('unknown template: {0}'.format(template))
+class Directory(api.KindObject):
 
     def get_path(self, *path):
-        base_path = self.config.get_workspace_path(self.directory)
-        return os.path.join(base_path, *path)
+        if self.name.startswith(strutil.root_prefix):
+            base_path = self.name
+        elif self.root:
+            base_path = self.root.required.get_path(self.name)
+        else:
+            base_path = os.path.abspath(self.name)
+        return os.path.normpath(os.path.join(base_path, *path))
 
-    def copytree(self, **kwargs):
-        return self.config.copytree(self.source.get_id(), self.get_id())
-
-    def rmtree(self):
+    def remove_dir(self):
         dst = self.get_path()
         if os.path.isdir(dst):
             shutil.rmtree(dst)
 
-    def get_template_destinations(self):
-        return [self.config.get_path(template.destination_filename)
-                for template in self.templates]
+    def copy_dir(self, **kwargs):
+        source = self.source.required
+        ignore = kwargs.get('ignore', [])
+        ignore.append('.git')
+        ignore.extend(list(source.get('ignore') or []))
+        ignore.extend(list(self.get('ignore') or []))
+        kwargs['ignore'] = shutil.ignore_patterns(*ignore)
+        src_dir = source.get_path()
+        dst_dir = self.get_path()
+        return strutil.copytree(src_dir, dst_dir, **kwargs)
 
-    def render_templates(self):
-        for template in self.templates:
-            filename = self.config.get_path(template.destination_filename)
-            data = template.render_template()
-            with open(filename, 'w') as f:
-                f.write(data)
 
-
-class Template(config.Config):
-    def __init__(self, config, parent=None):
-        super(Template, self).__init__(config, parent)
-        self['variables'] = VariableList(self.variables, self)
-        if isinstance(self.config, Destination):
-            self.base_template = self.config.config.get_template(self.template)
+class File(api.KindObject):
+    def get_path(self):
+        if self.name.startswith(strutil.root_prefix):
+            path = self.name
+        elif self.root:
+            path = self.root.required.get_path(self.name)
+        elif self.directory:
+            path = self.directory.required.get_path(self.name)
         else:
-            self.base_template = None
+            path = os.path.abspath(self.name)
+        return os.path.normpath(path)
 
-    @property
-    def template_filename(self):
-        if self.base_template:
-            return self.base_template.template
-        else:
-            return self.template
+    def get_source_path(self):
+        return self.source.required.get_path()
 
-    @property
-    def destination_filename(self):
-        if self.filename:
-            return self.filename
-        elif self.base_template:
-            return self.base_template.filename
-        else:
-            raise Exception('No filename found to make destination '
-                            'filename for template {0}'
-                            .format(self.get_id()))
+    def remove_file(self):
+        filename = self.get_path()
+        if os.path.isfile(filename):
+            os.remove(filename)
 
-    def get_context(self, **context):
-        context = self.variables.get_context(context)
-        if self.base_template is not None:
-            context = self.base_template.variables.get_context(context)
+    def copy_file(self):
+        src = self.get_source_path()
+        dst = self.get_path()
+        shutil.copyfile(src, dst)
+
+    def render_template(self):
+
+        def to_yaml(obj, indent=0, skip_first=True, **kwargs):
+            result = yamlutil.dump_dict(obj)
+            return os.linesep.join([
+                (' ' * indent if not skip_first or i != 0 else '') + l
+                for i, l in enumerate(result.split(os.linesep))
+            ]).strip()
+
+        with open(self.template.required.get_path()) as f:
+            env = Environment(
+                trim_blocks=True,
+                extensions=[
+                    'jinja2.ext.do',
+                    'jinja2.ext.loopcontrols',
+                ])
+            env.filters['to_yaml'] = to_yaml
+            template = env.from_string(f.read())
+
+        variables = self.resolve_variables()
+        data = template.render(**variables)
+        with open(self.get_path(), 'w') as f:
+            f.write(data)
+
+    def resolve_variables(self):
+        context = {}
+        for var in self.variables.required:
+            values = var.resolve()
+            if isinstance(values, api.KindObject):
+                values = values.data
+            if not isinstance(values, (dict, OrderedDict)):
+                raise api.PyautoException('var must resolve to a dict: {0}'
+                                              .format(values))
+            context.update(values)
         return context
 
-    def render_template(self, **context):
-        context = self.get_context(**context)
-        if isinstance(self.config, Destination):
-            return self.config.config.render_template(
-                self.template_filename, **context)
-        else:
-            return self.config.render_template(
-                self.template_filename, **context)
 
-
-class VariableList(object):
-    def __init__(self, variables, parent=None):
-        self.config = parent
-        self.variables = [Variable(v, parent) for v in variables]
-
-    def get_context(self, context):
-        for var in self:
-            value = var.get_value()
-            if not isinstance(value, (dict, OrderedDict, config.Config)):
-                raise Exception('var must resolve to a dict: {0}'
-                                .format(value))
-            for k, v in value.items():
-                if k not in context:
-                    context[k] = v
-        return context
-
-    def __len__(self):
-        return len(self.variables)
-
-    def __iter__(self):
-        return iter(self.variables)
-
-    def __getitem__(self, item):
-        return self.variables[item]
-
-
-class Variable(config.Config):
-    def get_value(self):
+class Variable(api.KindObject):
+    def resolve(self):
         value = None
         if self.env:
             if not self.name:
                 self['name'] = self.env
             value = self.get_env()
-        elif self.resource:
-            value = self.get_resource()
         elif self.file:
             value = self.get_file()
         elif self.function:
             value = self.get_function()
-        elif self.task is not None:
-            value = self.run_task()
         elif self.map is not None:
             value = self.get_map()
+        elif self.variable:
+            value = self.variable.required.resolve()
         elif self.string is not None:
             value = self.string
         else:
@@ -222,7 +144,7 @@ class Variable(config.Config):
                 value = yamlutil.load_dict(value)
             else:
                 raise Exception('unknown parse type: {0}'.format(self.parse))
-        if isinstance(value, (dict, OrderedDict, config.Config)) and \
+        if isinstance(value, (dict, OrderedDict, api.KindObject)) and \
                 self.select:
             value = jmespath.search(self.select, value)
         if self.name:
@@ -233,14 +155,8 @@ class Variable(config.Config):
     def get_env(self):
         return os.getenv(self.env)
 
-    def get_resource(self):
-        if isinstance(self.config.config, Destination):
-            return self.config.config.config.config.get_resource(self.resource)
-        else:
-            return self.config.config.get_resource(self.resource)
-
     def get_file(self):
-        filename = self.config.get_path(self.file)
+        filename = self.file.required.get_path()
         with open(filename) as f:
             return f.read()
 
@@ -249,13 +165,3 @@ class Variable(config.Config):
 
     def get_map(self):
         return self.map
-
-    def run_task(self):
-        if isinstance(self.config.config, Destination):
-            config = self.config.config.config.config
-        else:
-            config = self.config.config
-        return config.run_task_function(self.task)
-
-
-config.set_config_class('local', Local)

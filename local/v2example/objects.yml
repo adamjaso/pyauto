@@ -42,30 +42,3 @@ tag: myvar
 map:
   var1: 1
   var2: 2
----
-kind: file.File
-tag: myvarfile
-name: test/var.yml
----
-kind: file.Variable
-tag: myvarfile
-file: myvarfile
-parse: yaml
----
-kind: file.Variable
-tag: myvarenv
-env: PWD
----
-kind: file.Variable
-tag: myvarpointer
-variable: myvarfile
----
-kind: file.Variable
-tag: myvarpointerkey4
-variable: myvarfile
-select: key4
----
-kind: file.Variable
-tag: myvarfunc
-function: |
-  test_config.varfunc '{abc: 123}'
