@@ -1,0 +1,22 @@
+---
+package: shell
+version: 0.0.0
+dependencies:
+- file
+kinds:
+
+- kind: Command
+  configs: pyauto.shell.config.Command
+  attributes:
+    command: string
+    directory_path: string optional
+    stdin: string optional
+    stdout: string optional
+    stderr: string optional
+    success_codes: list optional
+    custom_env: map optional
+  relations:
+    directory: file.Directory optional
+  tasks:
+  - run_command
+  - describe_command

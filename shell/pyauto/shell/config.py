@@ -1,9 +1,12 @@
 import os
 import six
 import sys
+from collections import OrderedDict
 from subprocess import Popen, PIPE
-from pyauto.core import config
+from pyauto.core import api
 from pyauto.util.strutil import root_prefix
+
+packages = api.read_packages(__file__, 'package.yml')
 
 
 def log(*args):
@@ -18,9 +21,17 @@ class ProcessResult(object):
         self.stdout = stdout
         self.stderr = stderr
 
+    def to_dict(self):
+        return OrderedDict([
+            ('pid', self.pid),
+            ('returncode', self.returncode),
+            ('stdout', self.stdout),
+            ('stderr', self.stderr)
+        ])
 
-class Shell(config.Config):
-    def get_command_description(self):
+
+class Command(api.KindObject):
+    def describe_command(self):
         return ('shell "{0}" runs command "{1}" in directory "{2}", saving '
                 'stdout in "{3}" and stderr in "{4}"'.format(
                     self.tag, self.get_command_string(), self.get_directory(),
@@ -66,16 +77,20 @@ class Shell(config.Config):
         if p.returncode not in self.get_success_codes():
             raise Exception('shell command "{0}" failed with return code "{1}"'
                             .format(self.tag, p.returncode))
-        return ProcessResult(p, stdout, stderr)
+        return ProcessResult(p, stdout, stderr).to_dict()
 
     def get_success_codes(self):
-        return self.get('success_codes', [0])
+        return self.get('success_codes') or [0]
 
     def get_custom_env(self):
-        return self.get('custom_env', None)
+        custom_env = None
+        if self.get('custom_env'):
+            custom_env = {str(name): str(value)
+                          for name, value in self.get('custom_env').items()}
+        return custom_env
 
     def _get_pipe_name(self, name, default):
-        value = self.get(name, '')
+        value = self.get(name) or ''
         if '' == value:
             return default
         elif value.startswith(root_prefix):
@@ -119,14 +134,8 @@ class Shell(config.Config):
 
     def get_directory(self):
         if self.directory:
-            return os.path.abspath(os.path.expanduser(self.directory))
-        elif self.directory_resource:
-            return self.config.get_resource(self.directory_resource)
-        elif self.directory_local:
-            return os.path.expanduser(
-                self.config.local.get_destination_path(self.directory_local))
+            return self.directory.required.get_path()
+        elif self.directory_path:
+            return os.path.abspath(os.path.expanduser(self.directory_path))
         else:
             return os.getcwd()
-
-
-config.set_config_class('shell', Shell.wrap)

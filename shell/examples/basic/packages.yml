@@ -1,0 +1,3 @@
+packages:
+- module: pyauto.local.config
+- module: pyauto.shell.config

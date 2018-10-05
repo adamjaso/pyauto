@@ -1,0 +1,18 @@
+---
+kind: shell.Command
+tag: ls-l
+command: ls -l
+directory: test
+---
+kind: shell.Command
+tag: ls-l2
+command: ls -l
+directory_path: ./test
+---
+kind: shell.Command
+tag: ifconfig
+command: ifconfig
+---
+kind: file.Directory
+tag: test
+name: ./test

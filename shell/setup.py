@@ -16,8 +16,9 @@ setup(
     description='A shell command execution module',
     author='Adam Jaso',
     license='GNU General Public License V2',
-long_description=open(readme).read(),
+    long_description=open(readme).read(),
     packages=find_packages(),
+    include_package_data=True,
     install_requires=reqs,
     url='https://github.com/adamjaso/pyauto/tree/master/shell',
 

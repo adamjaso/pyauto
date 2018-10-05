@@ -24,7 +24,7 @@ test3: deps3-dev
 test2: deps2-dev
 	. env/bin/activate && PYTHONPATH=../util nose2 -v ; deactivate
 
-deps: deps3-dev deps2-dev
+install: deps3-dev deps2-dev
 
 test: test3 test2
 
