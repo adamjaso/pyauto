@@ -14,5 +14,6 @@ setup(
     license=open('LICENSE').read(),
     long_description=open('README.md').read(),
     packages=find_packages(),
+    include_package_data=True,
     install_requires=reqs,
 )
