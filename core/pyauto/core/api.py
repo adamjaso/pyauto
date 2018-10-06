@@ -223,16 +223,16 @@ class Repository(object):
     def kinds(self):
         return [k.kind for k in self._data.values()]
 
-    def query(self, match, **options):
+    def query(self, q, **options):
         if options.get('id', False):
             result = []
-            for kindstr, tags in match.items():
+            for kindstr, tags in q.items():
                 items = self.get(kindstr).query(tags, **options)
                 result.extend([i for i in items])
             return result
         else:
             result = OrderedDict()
-            for kindstr, tags in match.items():
+            for kindstr, tags in q.items():
                 items = self.get(kindstr).query(tags, **options)
                 if options.get('resolve', False):
                     items = [i for i in items]
@@ -754,12 +754,19 @@ class KindObjects(object):
         self._repo = repo
         self._kind = kind
         self._items = OrderedDict()
+        self._labels = OrderedDict()
 
     @property
     def data(self):
         return self._items
 
-    def query(self, tags, **options):
+    def query(self, data, **options):
+        if 'labels' == options.get('match'):
+            return self.query_label(data, **options)
+        else:
+            return self.query_tags(data, **options)
+
+    def query_tags(self, tags, **options):
         for item in self._items.values():
             if not tags or item.tag in tags:
                 if options.get('id'):
@@ -768,6 +775,25 @@ class KindObjects(object):
                     yield item.tag
                 else:
                     yield item
+
+    def query_label(self, labels, **options):
+        if len(labels) != len(set(labels)):
+            raise InvalidQueryException(
+                'query_label requires a list with no duplicates')
+        unique = {}
+        for label in set(labels):
+            for tag in self._labels.get(label, []):
+                if tag in unique:
+                    continue
+                else:
+                    unique[tag] = None
+                obj = self[tag]
+                if options.get('id'):
+                    yield obj.ref
+                elif options.get('tag'):
+                    yield obj.tag
+                else:
+                    yield obj
 
     @property
     def kind(self):
@@ -783,10 +809,25 @@ class KindObjects(object):
         if obj.tag in self._items:
             raise DuplicateKindObjectException(kind_tag=obj.get_id())
         self._items[obj.tag] = obj
+        for label in obj.labels:
+            self._add_label(label, obj.tag)
         return obj
+
+    def _add_label(self, label, tag):
+        if label not in self._labels:
+            self._labels[label] = list()
+        self._labels[label].append(tag)
+
+    def _remove_label(self, label, tag):
+        if label in self._labels:
+            self._labels[label].remove(tag)
+            return True
+        return False
 
     def remove(self, obj):
         if obj.tag in self._items:
+            for label in obj.labels:
+                self._remove_label(label, obj.tag)
             del self._items[obj.tag]
             return True
         return False
@@ -830,6 +871,10 @@ class KindObject(object):
     @property
     def data(self):
         return self._data
+
+    @property
+    def labels(self):
+        return self.get('labels') or []
 
     def set_repo(self, repo):
         self._repo = repo
@@ -1045,4 +1090,8 @@ class InvalidTaskSequenceInvocationException(PyautoException):
 
 
 class KindObjectRelationException(PyautoException):
+    pass
+
+
+class InvalidQueryException(PyautoException):
     pass

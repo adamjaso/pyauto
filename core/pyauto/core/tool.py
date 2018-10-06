@@ -152,9 +152,9 @@ class Command(object):
         ])
         logger.debug(yamlutil.dump_dict(data))
 
-    def run_query(self, selector, verbose):
+    def run_query(self, selector, verbose, match):
         q = yamlutil.load_dict(selector)
-        res = self.repository.query(q, id=True)
+        res = self.repository.query(q, id=True, match=match)
         if verbose:
             res = [self.repository[tag].data for tag in res]
         logger.debug(yamlutil.dump_dict([o for o in res]))
@@ -174,10 +174,12 @@ class Command(object):
 
 
 def render_output(format, data):
-    if 'json' == format:
+    if 'prettyjson' == format:
         return json.dumps(data, indent=2)
+    elif 'json' == format:
+        return json.dumps(data)
     elif 'yaml' == format:
-        return yamlutil.dump_dict(data)
+        return yamlutil.dump_dict([data])
     elif 'text' == format:
         return str(data)
     else:
@@ -203,6 +205,7 @@ def main():
     run.add_argument('-i', '--inspect', dest='inspect', action='store_true')
     query = parsers.add_parser('query')
     query.add_argument('selector')
+    query.add_argument('-m', '--match', dest='match', choices=['tags', 'labels'], default='tags')
     query.add_argument('-v', '--verbose', dest='verbose', action='store_true')
     args = args.parse_args()
 
@@ -214,7 +217,7 @@ def main():
     if 'run' == args.action:
         cmd.invoke_task(args)
     elif 'query' == args.action:
-        cmd.run_query(args.selector, args.verbose)
+        cmd.run_query(args.selector, args.verbose, args.match)
     else:
         cmd.show_files()
 

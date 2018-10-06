@@ -1,6 +1,7 @@
 import os
 import json
 from pyauto.util import yamlutil
+from pyauto.core import api
 
 
 dirname = os.path.dirname(os.path.abspath(__file__))
@@ -8,8 +9,9 @@ with open(os.path.join(dirname, 'pkg_.yml')) as f:
     packages = [pkg for pkg in yamlutil.load_dict(f, load_all=True)]
 
 
-class Base(object):
-    def __init__(self, obj):
+class Base(api.KindObject):
+    def __init__(self, repo, obj):
+        super(Base, self).__init__(repo, obj)
         self.obj = obj
 
     def __str__(self):

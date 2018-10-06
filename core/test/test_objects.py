@@ -180,6 +180,7 @@ def get_test_object(package='test2', kind='TestKind', tag='muhthing', **kwargs):
     obj = {
         'tag': tag,
         'kind': '.'.join([package, kind]),
+        'labels': kwargs.get('labels', []),
         'name': 'sumpthun',
         'source': 'web'
     }
@@ -663,6 +664,20 @@ class KindObjects(TestCase):
         self.assertNotIn('muhthing', self.kobjs)
         self.r.add(test_object)
         self.assertIn('muhthing', self.kobjs)
+
+    def test_labels(self):
+        test_object = get_test_object(labels=['region1'])
+        self.r.add(test_object)
+        self.assertIn('region1', self.kobjs._labels)
+
+    def test_query_label(self):
+        test_object = get_test_object(labels=['region1'])
+        self.r.add(test_object)
+        res = self.kobjs.query_label(['region1'], match='labels')
+        for obj in res:
+            break
+        else:
+            raise api.PyautoException('object not found')
 
     def test_remove(self):
         test_object = get_test_object()

@@ -1,3 +1,5 @@
 ---
 kind: test.Region
 tag: r1
+labels:
+- region1
