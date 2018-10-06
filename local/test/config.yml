@@ -4,6 +4,22 @@ tag: main
 workspace_dir: ./v2test
 ---
 kind: file.Directory
+tag: extrapackages
+name: ./test/extra/packages
+---
+kind: file.Directory
+tag: extraobjects
+name: ./test/extra/objects
+---
+kind: file.File
+tag: extrapackages
+name: ./test/extra/packages/packages.yml
+---
+kind: file.File
+tag: extraobjects
+name: ./test/extra/objects/objects.yml
+---
+kind: file.Directory
 tag: cwd
 name: .
 ---
@@ -68,4 +84,4 @@ select: key4
 kind: file.Variable
 tag: myvarfunc
 function: |
-  test_config.varfunc '{abc: 123}'
+  test.test_config.varfunc '{abc: 123}'

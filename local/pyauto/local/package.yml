@@ -7,11 +7,6 @@ kinds:
   configs: pyauto.local.config.Config
   attributes:
     workspace_dir: string
-    template_dir: string optional
-  relations:
-    templates: Template list optional
-    destinations: Directory list optional
-    sources: Directory list optional
   tasks:
   - get_path
   - init_workspace
@@ -28,6 +23,8 @@ kinds:
   - get_path
   - remove_dir
   - copy_dir
+  - load_packages
+  - load_objects
 
 - kind: File
   configs: pyauto.local.config.File
@@ -45,6 +42,8 @@ kinds:
   - copy_file
   - render_template
   - resolve_variables
+  - load_packages
+  - load_objects
 
 - kind: Variable
   configs: pyauto.local.config.Variable

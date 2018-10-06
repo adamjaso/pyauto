@@ -1,0 +1,7 @@
+---
+kind: file.File
+tag: loadablefile
+name: ./extra.yml
+---
+kind: extra.Tmp
+tag: loadabletmp

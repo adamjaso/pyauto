@@ -8,13 +8,15 @@ from collections import OrderedDict
 dirname = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 repo = api.Repository()
-for pkg in config.packages:
-    repo.add_package(pkg)
-for obj in api.read_packages(__file__, 'config.yml'):
-    repo.add(obj)
+repo.load_packages(config.packages)
+repo.load_file(__file__, 'config.yml')
 
 
 cfg = repo['file.Config/main']
+
+
+class Tmp(api.KindObject):
+    pass
 
 
 def setUpModule():
@@ -54,6 +56,21 @@ class Directory(TestCase):
         self.dir.copy_dir()
         self.assertTrue(os.path.isdir(self.dir.get_path()))
 
+    def test_load_packages(self):
+        dir_ = repo['file.Directory/extrapackages']
+        dir_.load_packages()
+        self.assertIn('extra.Tmp', repo)
+        repo.remove_package(repo.get_package('extra'))
+
+    def test_load_objects(self):
+        dir_ = repo['file.Directory/extrapackages']
+        dir_.load_packages()
+        dir_ = repo['file.Directory/extraobjects']
+        dir_.load_objects()
+        self.assertIn('extra.Tmp/loadabletmp', repo)
+        repo.remove_package(repo.get_package('extra'))
+        repo.remove(repo['file.File/loadablefile'])
+
 
 class File(TestCase):
     def setUp(self):
@@ -90,6 +107,21 @@ class File(TestCase):
         self.assertTrue(not os.path.isfile(f.get_path()))
         f.render_template()
         self.assertTrue(os.path.isfile(f.get_path()))
+
+    def test_load_packages(self):
+        dir_ = repo['file.File/extrapackages']
+        dir_.load_packages()
+        self.assertIn('extra.Tmp', repo)
+        repo.remove_package(repo.get_package('extra'))
+
+    def test_load_objects(self):
+        dir_ = repo['file.File/extrapackages']
+        dir_.load_packages()
+        dir_ = repo['file.File/extraobjects']
+        dir_.load_objects()
+        self.assertIn('extra.Tmp/loadabletmp', repo)
+        repo.remove_package(repo.get_package('extra'))
+        repo.remove(repo['file.File/loadablefile'])
 
 
 class Variable(TestCase):

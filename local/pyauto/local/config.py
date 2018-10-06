@@ -31,7 +31,8 @@ class Directory(api.KindObject):
             base_path = self.root.required.get_path(self.name)
         else:
             base_path = os.path.abspath(self.name)
-        return os.path.normpath(os.path.join(base_path, *path))
+        return os.path.expanduser(os.path.normpath(
+            os.path.join(base_path, *path)))
 
     def remove_dir(self):
         dst = self.get_path()
@@ -49,6 +50,12 @@ class Directory(api.KindObject):
         dst_dir = self.get_path()
         return strutil.copytree(src_dir, dst_dir, **kwargs)
 
+    def load_packages(self, *path):
+        return self._repo.load_packages_file(self.get_path(*path))
+
+    def load_objects(self, *path):
+        return self._repo.load_file(self.get_path(*path))
+
 
 class File(api.KindObject):
     def get_path(self):
@@ -60,7 +67,7 @@ class File(api.KindObject):
             path = self.directory.required.get_path(self.name)
         else:
             path = os.path.abspath(self.name)
-        return os.path.normpath(path)
+        return os.path.expanduser(os.path.normpath(path))
 
     def get_source_path(self):
         return self.source.required.get_path()
@@ -74,6 +81,12 @@ class File(api.KindObject):
         src = self.get_source_path()
         dst = self.get_path()
         shutil.copyfile(src, dst)
+
+    def load_packages(self):
+        return self._repo.load_packages_file(self.get_path())
+
+    def load_objects(self):
+        return self._repo.load_file(self.get_path())
 
     def render_template(self):
 
