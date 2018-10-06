@@ -614,6 +614,9 @@ class Kind(object):
                 .format(self['config']))
         return getattr(module, func_name)
 
+    def get_module(self):
+        return self._get_config_class()
+
 
 class KindTasks(object):
     def __init__(self, kind, tasks):

@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import logging
 import argparse
 import importlib
@@ -120,7 +121,8 @@ class Command(object):
         ref = api.TaskReference(kind_task)
         obj = self.repository[ref.kind][tag]
         args = yamlutil.load_dict(args or '{}')
-        return self.repository[ref.kind].kind.tasks[ref.name].invoke(obj, **args)
+        return self.repository[ref.kind].kind.tasks[ref.name]\
+            .invoke(obj, **args)
 
     def show_files(self):
         data = OrderedDict([
@@ -129,8 +131,10 @@ class Command(object):
                 ('names', [
                     OrderedDict([
                         ('name', k.name),
-                        ('module', str(self.repository[k.name]\
-                                           .kind.get_module()))
+                        ('commands', str(
+                            self.repository[k.name].kind.command_class)),
+                        ('configs', str(
+                            self.repository[k.name].kind.config_class))
                     ])
                     for k in self.repository.kinds
                 ]),
@@ -161,12 +165,25 @@ class Command(object):
         parts = args.task.split(':')
         if 'cmd' == parts[0]:
             res = self.invoke_kind_task(parts[1], args.targets, args.args)
+            res = render_output(args.format, res)
             logger.debug(res)
 
         elif 'task' == parts[0]:
             for res in self.invoke_task_sequence(args.targets, parts[1],
                                                  inspect=args.inspect):
-                logger.debug(yamlutil.dump_dict([res]))
+                res = render_output(args.format, [res])
+                logger.debug(res)
+
+
+def render_output(format, data):
+    if 'json' == format:
+        return json.dumps(data, indent=2)
+    elif 'yaml' == format:
+        return yamlutil.dump_dict(data)
+    elif 'text' == format:
+        return str(data)
+    else:
+        raise api.PyautoException('Invalid output format: {0}'.format(format))
 
 
 def main():
@@ -176,6 +193,8 @@ def main():
     args.add_argument('-o', dest='objects_filename', required=True)
     args.add_argument('-t', dest='tasks_filename', required=True)
     args.add_argument('-p', dest='packages_filename', required=True)
+    args.add_argument('-f', '--format', dest='format', choices=[
+        'yaml', 'json', 'text'], default='text')
 
     parsers = args.add_subparsers(dest='action')
     run = parsers.add_parser('run')
