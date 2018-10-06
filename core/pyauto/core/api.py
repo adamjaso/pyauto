@@ -64,10 +64,15 @@ class TaskSequenceArguments(object):
         self._repo = repo
         self._kinds = []
         self._names = []
+        self._options = parts.get('__options__', {})
+        if not isinstance(self._options, (dict, OrderedDict)):
+            raise InvalidTaskArgumentsException(
+                'Invalid arguments specification: {0}'.format(self._options))
         for name, kindstr in parts.items():
-            kind = self._repo.get_kind(kindstr)
-            self._names.append(name)
-            self._kinds.append(kind)
+            if '__options__' != name:
+                kind = self._repo.get_kind(kindstr)
+                self._names.append(name)
+                self._kinds.append(kind)
 
     def __len__(self):
         return len(self._kinds)
@@ -80,11 +85,14 @@ class TaskSequenceArguments(object):
             yield self[i]
 
     def resolve(self, args, **options):
+        if not isinstance(args, (dict, OrderedDict)):
+            raise InvalidTaskSequenceInvocationException(
+                'Invalid task sequence args: {0}'.format(args))
+        for name, value in self._options.items():
+            if name not in options:
+                options[name] = value
         results = []
         for name, kind in self.items():
-            if not isinstance(args, (dict, OrderedDict)):
-                raise InvalidTaskSequenceInvocationException(
-                    'Invalid task sequence args: {0}'.format(args))
             result = self._repo.query({kind.name: args.get(name, [])},
                                       **options)
             if 'id' in options and 'tag' in options:
@@ -253,6 +261,14 @@ class Repository(object):
             duration=duration,
             result=res,
         )
+
+    def dump(self):
+        for obj in self:
+            yield obj.dump()
+
+    def dump_packages(self):
+        for pkg in self._packages.values():
+            yield pkg.data
 
     def __repr__(self):
         return ''.join(['<', self.__class__.__name__, '\n  ', '\n  '.join([
@@ -533,6 +549,10 @@ class Package(object):
     def dependencies(self):
         return self._dependencies
 
+    @property
+    def data(self):
+        return self._data
+
     def get_kind_name(self, name):
         if '.' in name:
             return name
@@ -575,6 +595,18 @@ class Kind(object):
                     'Kind relations may not have the sam e as attributes: {0}'
                     .format(name))
         self._tasks = KindTasks(self, kind.get('tasks', []))
+
+    def dump(self, obj):
+        res = OrderedDict([
+            ('kind', obj.kind.name),
+            ('tag', obj.tag),
+            ('labels', obj.labels)
+        ])
+        for name in self.attributes:
+            res[name] = obj.data.get(name)
+        for name in self.relations:
+            res[name] = obj.data.get(name)
+        return res
 
     @property
     def name(self):
@@ -886,6 +918,9 @@ class KindObject(object):
     def set(self, item, value):
         self._data[item] = value
 
+    def dump(self):
+        return self.kind.dump(self)
+
     def __repr__(self):
         return ''.join(['<', self.__class__.__name__, ' ', self.get_id(), ' ',
                         str(self._data), '>'])
@@ -1094,4 +1129,8 @@ class KindObjectRelationException(PyautoException):
 
 
 class InvalidQueryException(PyautoException):
+    pass
+
+
+class InvalidTaskArgumentException(PyautoException):
     pass

@@ -152,12 +152,12 @@ class Command(object):
         ])
         logger.debug(yamlutil.dump_dict(data))
 
-    def run_query(self, selector, verbose, match):
-        q = yamlutil.load_dict(selector)
-        res = self.repository.query(q, id=True, match=match)
-        if verbose:
+    def run_query(self, args):
+        q = yamlutil.load_dict(args.selector)
+        res = self.repository.query(q, id=True, match=args.match)
+        if args.verbose:
             res = [self.repository[tag].data for tag in res]
-        logger.debug(yamlutil.dump_dict([o for o in res]))
+        logger.debug(yamlutil.dump_dict([o for o in res]).strip())
 
     def invoke_task(self, args):
         parts = args.task.split(':')
@@ -171,6 +171,23 @@ class Command(object):
                                                  inspect=args.inspect):
                 res = render_output(args.format, res)
                 logger.debug(res)
+        else:
+            raise api.InvalidKindObjectTaskInvocationException(
+                'Invalid kind object task: {0}'.format(args.task))
+
+    def dump(self, args):
+        if args.packages:
+            for item in self.repository.dump_packages():
+                sys.stdout.write('---' + os.linesep)
+                data = yamlutil.dump_dict(item)
+                sys.stdout.write(data)
+            sys.stdout.flush()
+        else:
+            for item in self.repository.dump():
+                sys.stdout.write('---' + os.linesep)
+                data = yamlutil.dump_dict(item)
+                sys.stdout.write(data)
+            sys.stdout.flush()
 
 
 def render_output(format, data):
@@ -207,6 +224,8 @@ def main():
     query.add_argument('selector')
     query.add_argument('-m', '--match', dest='match', choices=['tags', 'labels'], default='tags')
     query.add_argument('-v', '--verbose', dest='verbose', action='store_true')
+    dump = parsers.add_parser('dump')
+    dump.add_argument('--packages', action='store_true')
     args = args.parse_args()
 
     r = api.Repository()
@@ -217,7 +236,9 @@ def main():
     if 'run' == args.action:
         cmd.invoke_task(args)
     elif 'query' == args.action:
-        cmd.run_query(args.selector, args.verbose, args.match)
+        cmd.run_query(args)
+    elif 'dump' == args.action:
+        cmd.dump(args)
     else:
         cmd.show_files()
 

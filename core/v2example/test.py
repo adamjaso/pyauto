@@ -15,7 +15,7 @@ class Base(api.KindObject):
         self.obj = obj
 
     def __str__(self):
-        return json.dumps(self.obj.data, indent=2)
+        return json.dumps(self.obj, indent=2)
 
     def __repr__(self):
         return self.__str__()
@@ -23,7 +23,7 @@ class Base(api.KindObject):
 
 class T1(Base):
     def inspect(self, **kwargs):
-        print(self)
+        return self.obj
 
 
 class T2(Base):

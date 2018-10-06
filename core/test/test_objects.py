@@ -54,6 +54,10 @@ regions:
   '{reg: test.Region}':
     'login':
     - 'cmd:test.Region.login {{reg.tag}}'
+regions_with_group:
+  '{reg: test.Region, __options__: {match: labels}}':
+    'login':
+    - 'cmd:test.Region.login {{reg.tag}}'
 apps:
   '{reg: test.Region, app: test.App}':
     'copy':
@@ -77,6 +81,8 @@ kind: test.Region
 url: http://r1.localhost
 user: admin
 password: r1-pa$$word
+labels:
+- region1
 ---
 tag: r2
 kind: test.Region
@@ -259,10 +265,16 @@ class TaskSequenceArguments(TestCase):
     def setUp(self):
         self.r = api.Repository()
         self.r.load_packages(packages_)
+        self.r.load_objects(objects_)
         self.ts = api.TaskSequences(self.r, tasks_)
 
     def test_len(self):
         self.assertEqual(len(self.ts['apps.deploy'].args), 2)
+
+    def test_custom_options(self):
+        data = self.ts['regions_with_group.login'].invoke({'reg': ['region1']})
+        res = next(data)
+        self.assertEqual(res['result'], 'login!')
 
 
 class TaskSequences(TestCase):
@@ -282,7 +294,7 @@ class TaskSequences(TestCase):
 
     def test_task_sequence(self):
         names = ['regions.login', 'apps.deploy', 'apps.copy', 'apps.remove',
-                 'apps.render']
+                 'apps.render', 'regions_with_group.login']
         for name, tsq in self.ts.items():
             self.assertIn(name, names)
             self.assertIsInstance(tsq.args, api.TaskSequenceArguments)

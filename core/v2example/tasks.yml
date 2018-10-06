@@ -1,5 +1,5 @@
 t1:
-  '{arg: pkg1.T1}':
+  '{arg: pkg1.T1, __options__: {match: labels}}':
     default:
     - cmd:pkg1.T1.inspect {{arg.tag}}
 t2:
