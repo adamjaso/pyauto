@@ -118,11 +118,9 @@ class Command(object):
         return self.tasks[task].invoke(obj, inspect=inspect)
 
     def invoke_kind_task(self, kind_task, tag, args):
-        ref = api.TaskReference(kind_task)
-        obj = self.repository[ref.kind][tag]
         args = yamlutil.load_dict(args or '{}')
-        return self.repository[ref.kind].kind.tasks[ref.name]\
-            .invoke(obj, **args)
+        ref = api.TaskReference(kind_task)
+        return self.repository.invoke_kind_task(ref.kind, tag, ref.name, args)
 
     def show_files(self):
         data = OrderedDict([
@@ -171,7 +169,7 @@ class Command(object):
         elif 'task' == parts[0]:
             for res in self.invoke_task_sequence(args.targets, parts[1],
                                                  inspect=args.inspect):
-                res = render_output(args.format, [res])
+                res = render_output(args.format, res)
                 logger.debug(res)
 
 
@@ -194,7 +192,7 @@ def main():
     args.add_argument('-t', dest='tasks_filename', required=True)
     args.add_argument('-p', dest='packages_filename', required=True)
     args.add_argument('-f', '--format', dest='format', choices=[
-        'yaml', 'json', 'text'], default='text')
+        'yaml', 'json', 'prettyjson'], default='yaml')
 
     parsers = args.add_subparsers(dest='action')
     run = parsers.add_parser('run')

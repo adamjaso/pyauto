@@ -44,6 +44,20 @@ def read_packages(filename, neighbor=None):
     return list(_read_packages(filename))
 
 
+def get_output_object(
+        task=None, obj=None, time=None, duration=None, result=None):
+    if not isinstance(result, (dict, OrderedDict, list, int, float)) and \
+            not isinstance(result, six.string_types):
+        result = str(result)
+    return OrderedDict([
+        ('task', task.name),
+        ('obj', obj.ref),
+        ('time', time),
+        ('duration', duration),
+        ('result', result),
+    ])
+
+
 class TaskSequenceArguments(object):
     def __init__(self, repo, args):
         parts = yamlutil.load_dict(args)
@@ -171,13 +185,12 @@ class TaskSequence(object):
                 start = time.time()
                 res = kt.invoke(ko)
                 duration = time.time() - start
-                yield OrderedDict([
-                    ('task', kt.name),
-                    ('obj', ko.ref),
-                    ('time', start),
-                    ('duration', duration),
-                    ('result', res),
-                ])
+                yield get_output_object(
+                    task=kt,
+                    obj=ko,
+                    time=start,
+                    duration=duration,
+                    result=res)
 
     def resolve(self, args, resolved):
         for task in self._sequence:
@@ -225,6 +238,21 @@ class Repository(object):
                     items = [i for i in items]
                 result[kindstr] = items
             return result
+
+    def invoke_kind_task(self, kind, tag, task, args):
+        args = args or {}
+        obj = self[kind][tag]
+        kt = self[kind].kind.tasks[task]
+        start = time.time()
+        res = kt.invoke(obj, **args)
+        duration = time.time() - start
+        return get_output_object(
+            task=kt,
+            obj=obj,
+            time=start,
+            duration=duration,
+            result=res,
+        )
 
     def __repr__(self):
         return ''.join(['<', self.__class__.__name__, '\n  ', '\n  '.join([
@@ -307,6 +335,22 @@ class Repository(object):
         kind_name = obj['kind']
         self.assert_kind(kind_name)
         return self._data[kind_name].add(obj)
+
+    def load_packages_file(self, filename, neighbor=None):
+        pkgs = read_packages(filename, neighbor)
+        return self.load_packages(pkgs)
+
+    def load_file(self, filename, neighbor=None):
+        objs = read_packages(filename, neighbor)
+        return self.load_objects(objs)
+
+    def remove_package(self, pkg):
+        self.assert_package(pkg.name)
+        pkg = self._packages[pkg.name]
+        for kind in pkg.kinds:
+            for obj in self[kind.name]:
+                self.remove(obj)
+        del self._packages[pkg.name]
 
     def remove(self, obj):
         self.assert_kind(obj.kind.name)

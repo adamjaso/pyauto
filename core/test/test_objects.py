@@ -1,3 +1,4 @@
+import os
 import sys
 import six
 from copy import deepcopy
@@ -188,7 +189,7 @@ def get_test_object(package='test2', kind='TestKind', tag='muhthing', **kwargs):
 
 class Region(api.KindObject):
     def login(self, **kwargs):
-        pass
+        return 'login!'
 
 
 class App(api.KindObject):
@@ -406,6 +407,19 @@ class Repository(TestCase):
         thing = self.repo['test2.TestKind/muhthing']
         self.repo.remove(thing)
         self.assertNotIn('test2.TestKind/muhthing', self.repo)
+
+    def test_invoke_kind_task(self):
+        data = self.repo.invoke_kind_task(
+            'test.Region', 'r1', 'login', None)
+        self.assertIsInstance(data, OrderedDict)
+        for k in ['task', 'obj', 'time', 'duration', 'result']:
+            self.assertIn(k, data)
+
+    def test_load_file(self):
+        fn = os.path.dirname(os.path.abspath(__file__))
+        fn = os.path.join(fn, 'objects-example', 'objects.yml')
+        with self.assertRaises(api.DuplicateKindObjectException):
+            self.repo.load_file(fn)
 
 
 class Reference(TestCase):
