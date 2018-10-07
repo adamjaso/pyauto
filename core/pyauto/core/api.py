@@ -1,14 +1,29 @@
 import os
 import re
+import sys
 import six
 import time
 import shlex
 import jinja2
+import logging
 import itertools
 import importlib
+from logging import StreamHandler
 from copy import deepcopy
 from pyauto.util import yamlutil
 from collections import OrderedDict
+
+
+logger = logging.getLogger('pyauto.core')
+
+
+def setup_logger(logger):
+    formatter = logging.Formatter('%(message)s')
+    handler = StreamHandler(sys.stdout)
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
 
 
 def read_packages(filename, neighbor=None):
@@ -191,7 +206,7 @@ class TaskSequence(object):
                 yield ' '.join([kt.name, ko.ref])
             else:
                 start = time.time()
-                res = kt.invoke(ko)
+                res = kt.invoke(ko.resolve())
                 duration = time.time() - start
                 yield get_output_object(
                     task=kt,
@@ -208,7 +223,7 @@ class TaskSequence(object):
                 tags = self._args.render(tmpls[0], args)
                 kos = self._repo[kt.tasks.kind.name]
                 for tag in tags:
-                    ko = kos[tag]
+                    ko = ObjectResolver(kos, tag)
                     resolved.append((kt, ko))
             elif isinstance(parts[0], TaskSequence):
                 parts[0].resolve(args, resolved)
@@ -216,6 +231,21 @@ class TaskSequence(object):
                 raise UnknownTaskSequenceTypeException(
                     'Attempted to invoke unknown task type: {0}'
                     .format(parts[0]))
+
+
+class ObjectResolver(object):
+    def __init__(self, kos, tag):
+        self.kind_objects = kos
+        self.tag = tag
+        if self.tag not in self.kind_objects:
+            logger.warn('Required object not found: {0}'.format(self.ref))
+
+    @property
+    def ref(self):
+        return '/'.join([self.kind_objects.kind.name, self.tag])
+
+    def resolve(self):
+        return self.kind_objects[self.tag]
 
 
 class Repository(object):
@@ -802,7 +832,7 @@ class KindObjects(object):
         for item in self._items.values():
             if not tags or item.tag in tags:
                 if options.get('id'):
-                    yield item.get_id()
+                    yield item.ref
                 elif options.get('tag'):
                     yield item.tag
                 else:
@@ -839,7 +869,7 @@ class KindObjects(object):
         if not isinstance(obj, KindObject):
             obj = self.kind.config_class(self._repo, obj)
         if obj.tag in self._items:
-            raise DuplicateKindObjectException(kind_tag=obj.get_id())
+            raise DuplicateKindObjectException(kind_tag=obj.ref)
         self._items[obj.tag] = obj
         for label in obj.labels:
             self._add_label(label, obj.tag)
@@ -922,7 +952,7 @@ class KindObject(object):
         return self.kind.dump(self)
 
     def __repr__(self):
-        return ''.join(['<', self.__class__.__name__, ' ', self.get_id(), ' ',
+        return ''.join(['<', self.__class__.__name__, ' ', self.ref, ' ',
                         str(self._data), '>'])
 
     def __getattr__(self, item):
@@ -941,9 +971,6 @@ class KindObject(object):
         for name in self._data:
             yield (name, self.get(name))
 
-    def get_id(self):
-        return '/'.join([self.kind.name, self.tag])
-
 
 class RelationList(object):
     def __init__(self, parent, name, items):
@@ -960,7 +987,7 @@ class RelationList(object):
         if self._items is None:
             raise UnknownKindObjectRelationException(
                 'Required list was not found: {0}.{1}'
-                .format(self.parent.get_id(), self._name))
+                .format(self.parent.ref, self._name))
         return self._items
 
     def get_tag(self, tag):
@@ -1010,7 +1037,7 @@ class Relation(object):
         if self._value is None:
             raise UnknownKindObjectRelationException(
                 'Required value was not found: {0}.{1}'
-                .format(self.parent.get_id(), self._name))
+                .format(self.parent.ref, self._name))
         return self._value
 
     def __bool__(self):

@@ -1,30 +1,12 @@
 import os
 import sys
 import json
-import logging
 import argparse
 import importlib
-from logging import StreamHandler
 from collections import OrderedDict
 from pyauto.util import yamlutil
 from . import api
-
-
-logger = logging.getLogger('pyauto.core')
-
-
-def setup_logger(logger):
-    formatter = logging.Formatter('%(message)s')
-    handler = StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
-
-
-def write(*args):
-    sys.stdout.write(' '.join([str(arg) for arg in args]))
-    sys.stdout.flush()
+from .api import logger
 
 
 class Packages(object):
@@ -204,7 +186,7 @@ def render_output(format, data):
 
 
 def main():
-    setup_logger(logger)
+    api.setup_logger(api.logger)
     args = argparse.ArgumentParser()
     args.add_argument('-d', dest='dirname')
     args.add_argument('-o', dest='objects_filename', required=True)
@@ -222,7 +204,8 @@ def main():
     run.add_argument('-i', '--inspect', dest='inspect', action='store_true')
     query = parsers.add_parser('query')
     query.add_argument('selector')
-    query.add_argument('-m', '--match', dest='match', choices=['tags', 'labels'], default='tags')
+    query.add_argument('-m', '--match', dest='match',
+                       choices=['tags', 'labels'], default='tags')
     query.add_argument('-v', '--verbose', dest='verbose', action='store_true')
     dump = parsers.add_parser('dump')
     dump.add_argument('--packages', action='store_true')

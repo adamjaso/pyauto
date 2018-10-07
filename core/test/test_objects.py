@@ -352,7 +352,7 @@ class TaskSequence(TestCase):
             kt, ko = parts
             kte, koe = expected[i]
             self.assertEqual(kt.name, kte)
-            self.assertEqual(ko.get_id(), koe)
+            self.assertEqual(ko.ref, koe)
 
 
 class Repository(TestCase):
@@ -794,7 +794,7 @@ class RelationList(TestCase):
         rel = self.obj2.sources['muhthing']
         self.assertIsInstance(rel, api.Relation)
         muh = rel.required
-        self.assertEqual(muh.get_id(), 'test2.TestKind/muhthing')
+        self.assertEqual(muh.ref, 'test2.TestKind/muhthing')
 
     def test_len(self):
         self.assertEqual(len(self.obj2.sources), 1)
