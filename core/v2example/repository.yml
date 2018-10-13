@@ -1,0 +1,176 @@
+---
+kind: deploy.Region
+tag: abc1
+labels:
+- abc
+---
+kind: deploy.Region
+tag: abc2
+labels:
+- def
+- abc
+---
+kind: deploy.Region
+tag: abc3
+labels:
+- ghi
+- abc
+---
+kind: deploy.Region
+tag: abc4
+labels:
+- jkl
+- abc
+---
+kind: deploy.Region
+tag: abc5
+labels:
+- mno
+- abc
+---
+kind: deploy.App
+tag: a
+---
+kind: deploy.App
+tag: b
+---
+kind: deploy.App
+tag: c
+
+---
+kind: file.File
+tag: abc1_a
+---
+kind: file.File
+tag: abc1_b
+---
+kind: file.File
+tag: abc1_c
+---
+kind: file.File
+tag: abc2_a
+---
+kind: file.File
+tag: abc2_b
+---
+kind: file.File
+tag: abc2_c
+---
+kind: file.File
+tag: abc3_a
+---
+kind: file.File
+tag: abc3_b
+---
+kind: file.File
+tag: abc3_c
+---
+kind: file.File
+tag: abc4_a
+---
+kind: file.File
+tag: abc4_b
+---
+kind: file.File
+tag: abc4_c
+---
+kind: file.File
+tag: abc5_a
+---
+kind: file.File
+tag: abc5_b
+---
+kind: file.File
+tag: abc5_c
+
+---
+kind: file.Directory
+tag: abc1_a
+---
+kind: file.Directory
+tag: abc1_b
+---
+kind: file.Directory
+tag: abc1_c
+---
+kind: file.Directory
+tag: abc2_a
+---
+kind: file.Directory
+tag: abc2_b
+---
+kind: file.Directory
+tag: abc2_c
+---
+kind: file.Directory
+tag: abc3_a
+---
+kind: file.Directory
+tag: abc3_b
+---
+kind: file.Directory
+tag: abc3_c
+---
+kind: file.Directory
+tag: abc4_a
+---
+kind: file.Directory
+tag: abc4_b
+---
+kind: file.Directory
+tag: abc4_c
+---
+kind: file.Directory
+tag: abc5_a
+---
+kind: file.Directory
+tag: abc5_b
+---
+kind: file.Directory
+tag: abc5_c
+
+---
+kind: deploy.RegionApp
+tag: abc1_a
+---
+kind: deploy.RegionApp
+tag: abc1_b
+---
+kind: deploy.RegionApp
+tag: abc1_c
+---
+kind: deploy.RegionApp
+tag: abc2_a
+---
+kind: deploy.RegionApp
+tag: abc2_b
+---
+kind: deploy.RegionApp
+tag: abc2_c
+---
+kind: deploy.RegionApp
+tag: abc3_a
+---
+kind: deploy.RegionApp
+tag: abc3_b
+---
+kind: deploy.RegionApp
+tag: abc3_c
+---
+kind: deploy.RegionApp
+tag: abc4_a
+---
+kind: deploy.RegionApp
+tag: abc4_b
+---
+kind: deploy.RegionApp
+tag: abc4_c
+---
+kind: deploy.RegionApp
+tag: abc5_a
+---
+kind: deploy.RegionApp
+tag: abc5_b
+---
+kind: deploy.RegionApp
+tag: abc5_c

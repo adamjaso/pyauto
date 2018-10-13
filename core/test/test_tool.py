@@ -37,14 +37,14 @@ class Region(api.KindObject):
 
 class Cli(TestCase):
     def test_run_files(self):
-        p = run_tool('objects.yml', 'tasks.yml', 'pkg.yml', 'run', '{reg:[r1]}', 'task:regions.login')
+        p = run_tool('objects.yml', 'tasks.yml', 'pkg.yml', 'run', '{reg:{tags:[r1]}}', 'regions_login')
         self.assertEqual(p.returncode, 0)
 
     def test_run_dirs(self):
-        p = run_tool('objects', 'tasks.yml', 'pkg.yml', 'run', '{reg:[r1]}', 'task:regions.login')
+        p = run_tool('objects', 'tasks.yml', 'pkg.yml', 'run', '{reg:{tags:[r1]}}', 'regions_login')
         self.assertEqual(p.returncode, 0)
 
     def test_query_dirs(self):
-        p = run_tool('objects', 'tasks.yml', 'pkg.yml', 'query', '{test.Region:[r1]}')
+        p = run_tool('objects', 'tasks.yml', 'pkg.yml', 'query', '{test.Region:{tags:[r1]}}')
         self.assertEqual(p.returncode, 0)
 

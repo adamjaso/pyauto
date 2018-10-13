@@ -261,100 +261,6 @@ class Package(TestCase):
         self.assertEqual(test.version, '0.0.0')
 
 
-class TaskSequenceArguments(TestCase):
-    def setUp(self):
-        self.r = api.Repository()
-        self.r.load_packages(packages_)
-        self.r.load_objects(objects_)
-        self.ts = api.TaskSequences(self.r, tasks_)
-
-    def test_len(self):
-        self.assertEqual(len(self.ts['apps.deploy'].args), 2)
-
-    def test_custom_options(self):
-        data = self.ts['regions_with_group.login'].invoke({'reg': ['region1']})
-        res = next(data)
-        self.assertEqual(res['result'], 'login!')
-
-
-class TaskSequences(TestCase):
-    def setUp(self):
-        self.r = api.Repository()
-        self.r.load_packages(packages_)
-        self.ts = api.TaskSequences(self.r, tasks_)
-
-    def test_repo(self):
-        self.assertIsInstance(self.ts.repo, api.Repository)
-
-    def test_get(self):
-        seqs = self.ts.get('apps.deploy')
-        self.assertIsInstance(seqs, api.TaskSequence)
-        seqs = self.ts['apps.deploy']
-        self.assertIsInstance(seqs, api.TaskSequence)
-
-    def test_task_sequence(self):
-        names = ['regions.login', 'apps.deploy', 'apps.copy', 'apps.remove',
-                 'apps.render', 'regions_with_group.login']
-        for name, tsq in self.ts.items():
-            self.assertIn(name, names)
-            self.assertIsInstance(tsq.args, api.TaskSequenceArguments)
-
-
-class TaskSequence(TestCase):
-    def setUp(self):
-        self.r = api.Repository()
-        self.r.load_packages(packages_)
-        self.r.load_objects(objects_)
-        self.ts = api.TaskSequences(self.r, tasks_)
-        self.tsq = self.ts['apps.deploy']
-
-    def test_parse_task_command(self):
-        parts = self.tsq.parse_task('cmd:test.Directory.rmtree {{test}}')
-        self.assertEqual(len(parts), 2)
-        self.assertIsInstance(parts[0], api.KindTask)
-        self.assertListEqual(parts[1], ['{{test}}'])
-
-    def test_parse_task_task(self):
-        parts = self.tsq.parse_task('task:regions.login')
-        self.assertEqual(len(parts), 1)
-        self.assertIsInstance(parts[0], api.TaskSequence)
-
-    def test_parse_task_unknown(self):
-        with self.assertRaises(api.UnknownTaskSequenceTypeException) as \
-                context:
-            self.tsq.parse_task('abc:regions.login')
-        self.assertEqual(str(context.exception), 'Unknown task type: abc')
-
-    def test_resolve(self):
-        expected = [
-            ('test.Region.login', 'test.Region/r1'),
-            ('test.Region.login', 'test.Region/r2'),
-            ('test.Directory.rmtree', 'test.Directory/r1_web'),
-            ('test.Directory.rmtree', 'test.Directory/r1_api'),
-            ('test.Directory.rmtree', 'test.Directory/r2_web'),
-            ('test.Directory.rmtree', 'test.Directory/r2_api'),
-            ('test.Directory.copytree', 'test.Directory/r1_web'),
-            ('test.Directory.copytree', 'test.Directory/r1_api'),
-            ('test.Directory.copytree', 'test.Directory/r2_web'),
-            ('test.Directory.copytree', 'test.Directory/r2_api'),
-            ('test.Directory.render_templates', 'test.Directory/r1_web'),
-            ('test.Directory.render_templates', 'test.Directory/r1_api'),
-            ('test.Directory.render_templates', 'test.Directory/r2_web'),
-            ('test.Directory.render_templates', 'test.Directory/r2_api'),
-            ('test.RegionApp.deploy', 'test.RegionApp/r1_web'),
-            ('test.RegionApp.deploy', 'test.RegionApp/r1_api'),
-            ('test.RegionApp.deploy', 'test.RegionApp/r2_web'),
-            ('test.RegionApp.deploy', 'test.RegionApp/r2_api'),
-        ]
-        tasks = []
-        self.tsq.resolve({}, tasks)
-        for i, parts in enumerate(tasks):
-            kt, ko = parts
-            kte, koe = expected[i]
-            self.assertEqual(kt.name, kte)
-            self.assertEqual(ko.ref, koe)
-
-
 class Repository(TestCase):
     def setUp(self):
         self.repo = api.Repository()
@@ -366,18 +272,16 @@ class Repository(TestCase):
             self.assertIsInstance(k, api.Kind)
 
     def test_query_objs(self):
-        objs = self.repo.query({'test.Directory': []}, resolve=True)
-        for obj in objs['test.Directory']:
+        for obj in self.repo['test.Directory']:
             self.assertIsInstance(obj, api.KindObject)
 
     def test_query_tags(self):
-        objs = self.repo.query({'test.Directory': []}, tag=True, resolve=True)
-        self.assertDictEqual(objs, OrderedDict([
-            ('test.Directory', [
-                'web', 'api', 'r1_web', 'r1_api', 'r2_web', 'r2_api'])]))
+        objs = [o.tag for o in self.repo['test.Directory']]
+        self.assertListEqual(objs, [
+            'web', 'api', 'r1_web', 'r1_api', 'r2_web', 'r2_api'])
 
     def test_query_tags2(self):
-        objs = self.repo.query({'test.Directory': []}, id=True)
+        objs = [o.ref for o in self.repo['test.Directory']]
         self.assertListEqual(objs, [
             'test.Directory/web', 'test.Directory/api',
             'test.Directory/r1_web', 'test.Directory/r1_api',
@@ -668,7 +572,7 @@ class KindObjects(TestCase):
     def test_query(self):
         test_object = get_test_object()
         self.r.add(test_object)
-        for o in self.kobjs.query(['muhthing']):
+        for o in self.kobjs.query({'tags': ['muhthing']}):
             self.assertIsInstance(o, TestKind)
 
     def test_add(self):
@@ -682,10 +586,11 @@ class KindObjects(TestCase):
         self.r.add(test_object)
         self.assertIn('region1', self.kobjs._labels)
 
-    def test_query_label(self):
+    def test_query_labels(self):
         test_object = get_test_object(labels=['region1'])
         self.r.add(test_object)
-        res = self.kobjs.query_label(['region1'], match='labels')
+        print(self.r)
+        res = self.kobjs.query_labels(['region1'])
         for obj in res:
             break
         else:

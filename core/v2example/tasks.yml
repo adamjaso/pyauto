@@ -1,8 +1,27 @@
-t1:
-  '{arg: pkg1.T1, __options__: {match: labels}}':
-    default:
-    - cmd:pkg1.T1.inspect {{arg.tag}}
-t2:
-  '{arg: pkg1.T2}':
-    default:
-    - cmd:pkg1.T2.inspect {{arg.tag}}
+arguments:
+  region: {reg: deploy.Region}
+  application: {reg: deploy.Region, app: deploy.App}
+sequences:
+  region_login:
+    region:
+      - task: deploy.Region.login {{reg.tag}}
+
+  clone_app:
+    application:
+      - task: file.Directory.rmtree {{reg.tag}}_{{app.tag}}
+      - task: file.Directory.copytree {{reg.tag}}_{{app.tag}}
+
+  render_template:
+    application:
+      - task: file.File.render_template {{reg.tag}}_{{app.tag}}
+
+  push_app:
+    application:
+      - task: deploy.RegionApp.push_app {{reg.tag}}_{{app.tag}}
+
+  deploy_app:
+    application:
+      - seq: region_login
+      - seq: clone_app
+      - seq: render_template
+      - seq: push_app

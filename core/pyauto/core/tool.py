@@ -5,7 +5,7 @@ import argparse
 import importlib
 from collections import OrderedDict
 from pyauto.util import yamlutil
-from . import api
+from . import api, taskapi
 from .api import logger
 
 
@@ -85,8 +85,8 @@ class Command(object):
 
     def read_tasks(self):
         with open(self.tasks_filename) as f:
-            tasks = yamlutil.load_dict(f)
-        self.tasks = api.TaskSequences(self.repository, tasks)
+            sequences = yamlutil.load_dict(f)
+        self.sequences = taskapi.TaskSequences(sequences)
 
     def _read_packages(self, fn):
         with open(fn) as f:
@@ -94,15 +94,6 @@ class Command(object):
             for item in data['packages']:
                 for pkg in Packages(item):
                     yield pkg
-
-    def invoke_task_sequence(self, targets, task, inspect=False):
-        obj = yamlutil.load_dict(targets)
-        return self.tasks[task].invoke(obj, inspect=inspect)
-
-    def invoke_kind_task(self, kind_task, tag, args):
-        args = yamlutil.load_dict(args or '{}')
-        ref = api.TaskReference(kind_task)
-        return self.repository.invoke_kind_task(ref.kind, tag, ref.name, args)
 
     def show_files(self):
         data = OrderedDict([
@@ -128,48 +119,46 @@ class Command(object):
             ])),
             ('Tasks', OrderedDict([
                 ('filename', self.tasks_filename),
-                ('names', [
-                    name for name, _ in self.tasks.items()])
+                ('arguments', [
+                    name for name in self.sequences.arguments]),
+                ('sequences', [
+                    name for name in self.sequences.sequences])
             ])),
         ])
         logger.debug(yamlutil.dump_dict(data))
 
     def run_query(self, args):
         q = yamlutil.load_dict(args.selector)
-        res = self.repository.query(q, id=True, match=args.match)
-        if args.verbose:
-            res = [self.repository[tag].data for tag in res]
-        logger.debug(yamlutil.dump_dict([o for o in res]).strip())
+        res = self.repository.query(q, tag=True, resolve=True)
+        logger.debug(render_output(args.format, res))
 
-    def invoke_task(self, args):
-        parts = args.task.split(':')
-        if 'cmd' == parts[0]:
-            res = self.invoke_kind_task(parts[1], args.targets, args.args)
-            res = render_output(args.format, res)
-            logger.debug(res)
+    def resolve_context(self, args):
+        query = yamlutil.load_dict(args.query)
+        for res in self.sequences.resolve_context(query):
+            logger.debug(render_output(args.format, res))
 
-        elif 'task' == parts[0]:
-            for res in self.invoke_task_sequence(args.targets, parts[1],
-                                                 inspect=args.inspect):
-                res = render_output(args.format, res)
-                logger.debug(res)
+    def run_sequence(self, args):
+        query = yamlutil.load_dict(args.query)
+        if args.inspect:
+            logger.debug(render_output(args.format, [
+                task
+                for task in self.sequences.resolve(
+                    self.repository, query, args.sequence)
+            ]))
         else:
-            raise api.InvalidKindObjectTaskInvocationException(
-                'Invalid kind object task: {0}'.format(args.task))
+            for res in self.sequences.run_sequence(
+                    self.repository, query, args.sequence):
+                logger.debug(render_output(args.format, res))
 
     def dump(self, args):
         if args.packages:
             for item in self.repository.dump_packages():
-                sys.stdout.write('---' + os.linesep)
-                data = yamlutil.dump_dict(item)
-                sys.stdout.write(data)
-            sys.stdout.flush()
+                logger.debug('---')
+                logger.debug(render_output(args.format, item))
         else:
             for item in self.repository.dump():
-                sys.stdout.write('---' + os.linesep)
-                data = yamlutil.dump_dict(item)
-                sys.stdout.write(data)
-            sys.stdout.flush()
+                logger.debug('---')
+                logger.debug(render_output(args.format, item))
 
 
 def render_output(format, data):
@@ -178,7 +167,7 @@ def render_output(format, data):
     elif 'json' == format:
         return json.dumps(data)
     elif 'yaml' == format:
-        return yamlutil.dump_dict([data])
+        return yamlutil.dump_dict(data)
     elif 'text' == format:
         return str(data)
     else:
@@ -197,15 +186,13 @@ def main():
 
     parsers = args.add_subparsers(dest='action')
     run = parsers.add_parser('run')
-    run.add_argument('targets')
-    run.add_argument('task')
+    run.add_argument('query')
+    run.add_argument('sequence')
     run.add_argument('-a', '--args', dest='args', default='{}',
                      type=yamlutil.load_dict)
     run.add_argument('-i', '--inspect', dest='inspect', action='store_true')
     query = parsers.add_parser('query')
     query.add_argument('selector')
-    query.add_argument('-m', '--match', dest='match',
-                       choices=['tags', 'labels'], default='tags')
     query.add_argument('-v', '--verbose', dest='verbose', action='store_true')
     dump = parsers.add_parser('dump')
     dump.add_argument('--packages', action='store_true')
@@ -217,7 +204,7 @@ def main():
     cmd.validate_files()
     cmd.load()
     if 'run' == args.action:
-        cmd.invoke_task(args)
+        cmd.run_sequence(args)
     elif 'query' == args.action:
         cmd.run_query(args)
     elif 'dump' == args.action:

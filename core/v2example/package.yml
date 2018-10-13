@@ -1,0 +1,28 @@
+---
+package: file
+version: 0.0.0
+kinds:
+  - kind: Directory
+    configs: v2example.config.Directory
+    tasks:
+      - rmtree
+      - copytree
+  - kind: File
+    configs: v2example.config.File
+    tasks:
+      - render_template
+---
+package: deploy
+version: 0.0.0
+kinds:
+  - kind: Region
+    configs: v2example.config.Region
+    tasks:
+      - login
+  - kind: App
+    configs: v2example.config.Region
+    tasks: []
+  - kind: RegionApp
+    configs: v2example.config.RegionApp
+    tasks:
+      - push_app

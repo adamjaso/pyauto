@@ -1,4 +1,6 @@
-regions:
-  '{reg: test.Region}':
-    'login':
-    - 'cmd:test.Region.login {{reg.tag}}'
+arguments:
+  region: {reg: test.Region}
+sequences:
+  regions_login:
+    region:
+      - task: test.Region.login {{reg.tag}}

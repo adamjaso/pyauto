@@ -3,6 +3,7 @@ import re
 import sys
 import six
 import time
+import json
 import shlex
 import jinja2
 import logging
@@ -73,181 +74,6 @@ def get_output_object(
     ])
 
 
-class TaskSequenceArguments(object):
-    def __init__(self, repo, args):
-        parts = yamlutil.load_dict(args)
-        self._repo = repo
-        self._kinds = []
-        self._names = []
-        self._options = parts.get('__options__', {})
-        if not isinstance(self._options, (dict, OrderedDict)):
-            raise InvalidTaskArgumentsException(
-                'Invalid arguments specification: {0}'.format(self._options))
-        for name, kindstr in parts.items():
-            if '__options__' != name:
-                kind = self._repo.get_kind(kindstr)
-                self._names.append(name)
-                self._kinds.append(kind)
-
-    def __len__(self):
-        return len(self._kinds)
-
-    def __getitem__(self, i):
-        return (self._names[i], self._kinds[i])
-
-    def items(self):
-        for i in range(len(self)):
-            yield self[i]
-
-    def resolve(self, args, **options):
-        if not isinstance(args, (dict, OrderedDict)):
-            raise InvalidTaskSequenceInvocationException(
-                'Invalid task sequence args: {0}'.format(args))
-        for name, value in self._options.items():
-            if name not in options:
-                options[name] = value
-        results = []
-        for name, kind in self.items():
-            result = self._repo.query({kind.name: args.get(name, [])},
-                                      **options)
-            if 'id' in options and 'tag' in options:
-                results.append(result)
-            else:
-                results.append(next([row for row in val]
-                                    for val in result.values()))
-        return [OrderedDict(zip(self._names, row))
-                for row in itertools.product(*results)]
-
-    def render(self, template, args, **options):
-        template = jinja2.Template(template)
-        rows = self.resolve(args, **options)
-        for varlist in rows:
-            yield template.render(**varlist)
-
-
-class TaskSequences(object):
-    def __init__(self, repo, tasks):
-        self._repo = repo
-        self._tasks = OrderedDict()
-        for group, definition in tasks.items():
-            for args, definition in definition.items():
-                args = TaskSequenceArguments(repo, args)
-                for task, sequence in definition.items():
-                    name = '.'.join([group, task])
-                    self._tasks[name] = TaskSequence(
-                        self, name, args, sequence)
-
-    def items(self):
-        return self._tasks.items()
-
-    @property
-    def repo(self):
-        return self._repo
-
-    def has(self, item):
-        return item in self
-
-    def get(self, item):
-        if not self.has(item):
-            raise UnknownTaskSequenceException('Unknown task sequence: {0}'
-                                               .format(item))
-        return self._tasks.get(item)
-
-    def __getitem__(self, item):
-        return self.get(item)
-
-    def __contains__(self, item):
-        return item in self._tasks
-
-
-class TaskSequence(object):
-    def __init__(self, tasks, name, args, sequence):
-        self._tasks = tasks
-        self._repo = tasks.repo
-        self._name = name
-        self._args = args
-        self._sequence = sequence
-
-    @property
-    def args(self):
-        return self._args
-
-    def __repr__(self):
-        return ''.join(['<', self.__class__.__name__, ' ', self._name, ' ',
-                        hex(id(self)), '>'])
-
-    def parse_task(self, command):
-        parts = command.split(':')
-        if len(parts) != 2:
-            raise InvalidTaskSequenceInvocationException(
-                'Invalid task sequence: {0}'.format(command))
-
-        if 'cmd' == parts[0]:
-            parts_ = shlex.split(parts[1])
-            tmpls = parts_[1:]
-            parts_ = parts_[0].split('.')
-            kind = '.'.join(parts_[:-1])
-            kind = self._repo.get_kind(kind)
-            task = parts_[-1]
-            return kind.tasks[task], tmpls
-
-        elif 'task' == parts[0]:
-            return (self._tasks.get(parts[1]),)
-
-        else:
-            raise UnknownTaskSequenceTypeException(
-                'Unknown task type: {0}'.format(parts[0]))
-
-    def invoke(self, args, inspect=False):
-        tasks = []
-        self.resolve(args, tasks)
-        for kt, ko in tasks:
-            if inspect:
-                yield ' '.join([kt.name, ko.ref])
-            else:
-                start = time.time()
-                res = kt.invoke(ko.resolve())
-                duration = time.time() - start
-                yield get_output_object(
-                    task=kt,
-                    obj=ko,
-                    time=start,
-                    duration=duration,
-                    result=res)
-
-    def resolve(self, args, resolved):
-        for task in self._sequence:
-            parts = self.parse_task(task)
-            if isinstance(parts[0], KindTask):
-                kt, tmpls = parts
-                tags = self._args.render(tmpls[0], args)
-                kos = self._repo[kt.tasks.kind.name]
-                for tag in tags:
-                    ko = ObjectResolver(kos, tag)
-                    resolved.append((kt, ko))
-            elif isinstance(parts[0], TaskSequence):
-                parts[0].resolve(args, resolved)
-            else:
-                raise UnknownTaskSequenceTypeException(
-                    'Attempted to invoke unknown task type: {0}'
-                    .format(parts[0]))
-
-
-class ObjectResolver(object):
-    def __init__(self, kos, tag):
-        self.kind_objects = kos
-        self.tag = tag
-        if self.tag not in self.kind_objects:
-            logger.warn('Required object not found: {0}'.format(self.ref))
-
-    @property
-    def ref(self):
-        return '/'.join([self.kind_objects.kind.name, self.tag])
-
-    def resolve(self):
-        return self.kind_objects[self.tag]
-
-
 class Repository(object):
     def __init__(self):
         self._data = OrderedDict()
@@ -262,20 +88,28 @@ class Repository(object):
         return [k.kind for k in self._data.values()]
 
     def query(self, q, **options):
-        if options.get('id', False):
-            result = []
-            for kindstr, tags in q.items():
-                items = self.get(kindstr).query(tags, **options)
-                result.extend([i for i in items])
-            return result
-        else:
-            result = OrderedDict()
-            for kindstr, tags in q.items():
-                items = self.get(kindstr).query(tags, **options)
-                if options.get('resolve', False):
-                    items = [i for i in items]
-                result[kindstr] = items
-            return result
+        result = OrderedDict()
+        for kindstr, objs in q.items():
+            result[kindstr] = self.get(kindstr).query(objs, **options)
+            if options.get('resolve', False):
+                result[kindstr] = [i for i in result[kindstr]]
+        return result
+
+    def invoke(self, taskref, tag, args):
+        args = args or {}
+        ref = TaskReference(taskref)
+        obj = self[ref.kind][tag]
+        kt = self[ref.kind].kind.tasks[ref.name]
+        start = time.time()
+        res = kt.invoke(obj, **args)
+        duration = time.time() - start
+        return get_output_object(
+            task=kt,
+            obj=obj,
+            time=start,
+            duration=duration,
+            result=res,
+        )
 
     def invoke_kind_task(self, kind, tag, task, args):
         args = args or {}
@@ -301,9 +135,12 @@ class Repository(object):
             yield pkg.data
 
     def __repr__(self):
-        return ''.join(['<', self.__class__.__name__, '\n  ', '\n  '.join([
-            ' '.join([kind, str(objs)])
-            for kind, objs in self._data.items()]), '>'])
+        return json.dumps({
+            self.__class__.__name__: OrderedDict([
+                (kind, len(objs))
+                for kind, objs in self._data.items()
+            ])
+        })
 
     def __iter__(self):
         for kind, objs in self._data.items():
@@ -659,7 +496,7 @@ class Kind(object):
         return self._attributes
 
     def __repr__(self):
-        return str(self._data)
+        return json.dumps(self._data)
 
     def __getattr__(self, item):
         return self.__getitem__(item)
@@ -823,39 +660,55 @@ class KindObjects(object):
         return self._items
 
     def query(self, data, **options):
-        if 'labels' == options.get('match'):
-            return self.query_label(data, **options)
-        else:
-            return self.query_tags(data, **options)
+        if data.get('all'):
+            for obj in self._items.values():
+                yield self.get_object(obj, **options)
+            return
+
+        tags = data.get('tags', [])
+        if isinstance(tags, six.text_type):
+            tags = [tags]
+        elif not isinstance(tags, list):
+            raise InvalidQueryException('Query tags must be a list')
+
+        labels = data.get('labels', [])
+        if isinstance(labels, six.text_type):
+            labels = [labels]
+        elif not isinstance(labels, list):
+            raise InvalidQueryException('Query labels must be a list')
+
+        seen = set()
+        for result in self.query_tags(tags, **options):
+            if result not in seen:
+                seen.add(result)
+                yield result
+        for result in self.query_labels(labels, **options):
+            if result not in seen:
+                seen.add(result)
+                yield result
 
     def query_tags(self, tags, **options):
-        for item in self._items.values():
-            if not tags or item.tag in tags:
-                if options.get('id'):
-                    yield item.ref
-                elif options.get('tag'):
-                    yield item.tag
-                else:
-                    yield item
+        for obj in self._items.values():
+            if obj.tag in tags:
+                yield self.get_object(obj, **options)
 
-    def query_label(self, labels, **options):
+    def query_labels(self, labels, **options):
         if len(labels) != len(set(labels)):
-            raise InvalidQueryException(
-                'query_label requires a list with no duplicates')
-        unique = {}
-        for label in set(labels):
+            raise InvalidQueryException('query_label requires a unique list')
+        seen = set()
+        for label in labels:
             for tag in self._labels.get(label, []):
-                if tag in unique:
-                    continue
-                else:
-                    unique[tag] = None
-                obj = self[tag]
-                if options.get('id'):
-                    yield obj.ref
-                elif options.get('tag'):
-                    yield obj.tag
-                else:
-                    yield obj
+                if tag not in seen:
+                    seen.add(tag)
+                    yield self.get_object(self[tag], **options)
+
+    def get_object(self, obj, **options):
+        if options.get('ref'):
+            return obj.ref
+        elif options.get('tag'):
+            return obj.tag
+        else:
+            return obj
 
     @property
     def kind(self):
@@ -909,7 +762,7 @@ class KindObjects(object):
 
     def __repr__(self):
         return ''.join(['<', self.__class__.__name__, ' ', self.kind.name, ' ',
-                        str(self._items), '>'])
+                        json.dumps(self._items), '>'])
 
 
 class KindObject(object):
@@ -952,8 +805,7 @@ class KindObject(object):
         return self.kind.dump(self)
 
     def __repr__(self):
-        return ''.join(['<', self.__class__.__name__, ' ', self.ref, ' ',
-                        str(self._data), '>'])
+        return json.dumps({self.ref: self._data})
 
     def __getattr__(self, item):
         return self.get(item)
