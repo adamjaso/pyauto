@@ -1,4 +1,6 @@
 import os
+import pwd
+import grp
 import json
 import shutil
 import jmespath
@@ -11,6 +13,24 @@ from jinja2 import Environment
 packages = api.read_packages(__file__, 'package.yml')
 
 
+def _get_user_id(self):
+    if 'uid' in self:
+        return self['uid']
+    elif 'user' in self:
+        return pwd.getpwnam(self['user']).pw_uid
+    else:
+        return os.getuid()
+
+
+def _get_group_id(self):
+    if 'gid' in self:
+        return self['gid']
+    elif 'group' in self:
+        return grp.getgrnam(self['group']).gr_gid
+    else:
+        return os.getgid()
+
+
 class Config(api.KindObject):
     def get_path(self, *fn):
         workspace_dir = os.path.abspath(self.workspace_dir)
@@ -20,19 +40,39 @@ class Config(api.KindObject):
         workspace_dir = self.get_path()
         if not os.path.isdir(workspace_dir):
             os.makedirs(workspace_dir)
+        return workspace_dir
 
 
 class Directory(api.KindObject):
+    @property
+    def mode(self):
+        return self.get('mode') or int('755', 8)
+
+    @property
+    def uid(self):
+        return _get_user_id(self)
+
+    @property
+    def gid(self):
+        return _get_group_id(self)
 
     def get_path(self, *path):
         if self.name.startswith(strutil.root_prefix):
             base_path = self.name
         elif self.root:
             base_path = self.root.required.get_path(self.name)
+        elif self.directory:
+            base_path = self.directory.required.get_path(self.name)
         else:
             base_path = os.path.abspath(self.name)
         return os.path.expanduser(os.path.normpath(
             os.path.join(base_path, *path)))
+
+    def make_dir(self):
+        dst = self.get_path()
+        if not os.path.isdir(dst):
+            os.makedirs(dst)
+        return dst
 
     def remove_dir(self):
         dst = self.get_path()
@@ -48,16 +88,36 @@ class Directory(api.KindObject):
         kwargs['ignore'] = shutil.ignore_patterns(*ignore)
         src_dir = source.get_path()
         dst_dir = self.get_path()
-        return strutil.copytree(src_dir, dst_dir, **kwargs)
+        strutil.copytree(src_dir, dst_dir, **kwargs)
+        return dst_dir
 
-    def load_packages(self, *path):
-        return self._repo.load_packages_file(self.get_path(*path))
+    def set_mode(self):
+        path = self.get_path()
+        os.chmod(path, self.mode)
+        return path
+
+    def set_owner(self):
+        path = self.get_path()
+        os.chown(path, self.uid, self.gid)
+        return path
 
     def load_objects(self, *path):
-        return self._repo.load_file(self.get_path(*path))
+        self._repo.load_file(self.get_path(*path))
 
 
 class File(api.KindObject):
+    @property
+    def mode(self):
+        return self.get('mode') or int('644', 8)
+
+    @property
+    def uid(self):
+        return _get_user_id(self)
+
+    @property
+    def gid(self):
+        return _get_group_id(self)
+
     def get_path(self):
         if self.name.startswith(strutil.root_prefix):
             path = self.name
@@ -81,12 +141,20 @@ class File(api.KindObject):
         src = self.get_source_path()
         dst = self.get_path()
         shutil.copyfile(src, dst)
+        return dst
 
-    def load_packages(self):
-        return self._repo.load_packages_file(self.get_path())
+    def set_mode(self):
+        path = self.get_path()
+        os.chmod(path, self.mode)
+        return path
+
+    def set_owner(self):
+        path = self.get_path()
+        os.chown(path, self.uid, self.gid)
+        return path
 
     def load_objects(self):
-        return self._repo.load_file(self.get_path())
+        self._repo.load_file(self.get_path())
 
     def render_template(self):
 
@@ -109,8 +177,10 @@ class File(api.KindObject):
 
         variables = self.resolve_variables()
         data = template.render(**variables)
-        with open(self.get_path(), 'w') as f:
+        dst = self.get_path()
+        with open(dst, 'w') as f:
             f.write(data)
+        return dst
 
     def resolve_variables(self):
         context = {}
@@ -120,7 +190,7 @@ class File(api.KindObject):
                 values = values.data
             if not isinstance(values, (dict, OrderedDict)):
                 raise api.PyautoException('var must resolve to a dict: {0}'
-                                              .format(values))
+                                          .format(values))
             context.update(values)
         return context
 

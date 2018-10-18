@@ -1,9 +1,0 @@
----
-package: extra
-version: 0.0.0
-dependencies: []
-kinds:
-- kind: Tmp
-  configs: test.test_config.Tmp
-  attributes: {}
-  tasks: []

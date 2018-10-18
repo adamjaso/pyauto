@@ -1,4 +1,6 @@
-import os, shutil, six
+import os
+import shutil
+import six
 from unittest import TestCase
 from pyauto.core import api
 from pyauto.local import config
@@ -56,20 +58,34 @@ class Directory(TestCase):
         self.dir.copy_dir()
         self.assertTrue(os.path.isdir(self.dir.get_path()))
 
-    def test_load_packages(self):
-        dir_ = repo['file.Directory/extrapackages']
-        dir_.load_packages()
-        self.assertIn('extra.Tmp', repo)
-        repo.remove_package(repo.get_package('extra'))
-
     def test_load_objects(self):
-        dir_ = repo['file.Directory/extrapackages']
-        dir_.load_packages()
         dir_ = repo['file.Directory/extraobjects']
         dir_.load_objects()
-        self.assertIn('extra.Tmp/loadabletmp', repo)
-        repo.remove_package(repo.get_package('extra'))
         repo.remove(repo['file.File/loadablefile'])
+
+    def test_make_dir(self):
+        dir_ = repo['file.Directory/modeownership']
+        dir_.make_dir()
+        dir_.remove_dir()
+
+    def test_set_mode(self):
+        dir_ = repo['file.Directory/modeownership']
+        dir_.make_dir()
+        dir_.set_mode()
+        mode = oct(os.stat(dir_.get_path()).st_mode)
+        self.assertEqual(mode[-3:], oct(dir_.mode)[-3:])
+        dir_.remove_dir()
+
+    def test_set_owner(self):
+        dir_ = repo['file.Directory/modeownership']
+        dir_.make_dir()
+        if six.PY2:
+            with self.assertRaises(OSError):
+                dir_.set_owner()
+        else:
+            with self.assertRaises(PermissionError):
+                dir_.set_owner()
+        dir_.remove_dir()
 
 
 class File(TestCase):
@@ -108,20 +124,31 @@ class File(TestCase):
         f.render_template()
         self.assertTrue(os.path.isfile(f.get_path()))
 
-    def test_load_packages(self):
-        dir_ = repo['file.File/extrapackages']
-        dir_.load_packages()
-        self.assertIn('extra.Tmp', repo)
-        repo.remove_package(repo.get_package('extra'))
-
     def test_load_objects(self):
-        dir_ = repo['file.File/extrapackages']
-        dir_.load_packages()
         dir_ = repo['file.File/extraobjects']
         dir_.load_objects()
-        self.assertIn('extra.Tmp/loadabletmp', repo)
-        repo.remove_package(repo.get_package('extra'))
         repo.remove(repo['file.File/loadablefile'])
+
+    def test_set_mode(self):
+        file_ = repo['file.File/modeownership']
+        with open(file_.get_path(), 'w') as f:
+            f.write('tmp')
+        file_.set_mode()
+        mode = oct(os.stat(file_.get_path()).st_mode)
+        self.assertEqual(mode[-3:], oct(file_.mode)[-3:])
+        file_.remove_file()
+
+    def test_set_owner(self):
+        file_ = repo['file.File/modeownership']
+        with open(file_.get_path(), 'w') as f:
+            f.write('tmp')
+        if six.PY2:
+            with self.assertRaises(OSError):
+                file_.set_owner()
+        else:
+            with self.assertRaises(PermissionError):
+                file_.set_owner()
+        file_.remove_file()
 
 
 class Variable(TestCase):

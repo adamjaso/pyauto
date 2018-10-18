@@ -4,16 +4,8 @@ tag: main
 workspace_dir: ./v2test
 ---
 kind: file.Directory
-tag: extrapackages
-name: ./test/extra/packages
----
-kind: file.Directory
 tag: extraobjects
 name: ./test/extra/objects
----
-kind: file.File
-tag: extrapackages
-name: ./test/extra/packages/packages.yml
 ---
 kind: file.File
 tag: extraobjects
@@ -22,6 +14,13 @@ name: ./test/extra/objects/objects.yml
 kind: file.Directory
 tag: cwd
 name: .
+---
+kind: file.Directory
+tag: modeownership
+name: test/modeownership
+mode: 750
+user: root
+group: staff
 ---
 kind: file.Directory
 tag: copy
@@ -62,6 +61,13 @@ map:
 kind: file.File
 tag: myvarfile
 name: test/var.yml
+---
+kind: file.File
+tag: modeownership
+mode: 640
+user: root
+group: staff
+name: test/modeownership.txt
 ---
 kind: file.Variable
 tag: myvarfile

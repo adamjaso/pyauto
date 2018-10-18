@@ -15,21 +15,33 @@ kinds:
   configs: pyauto.local.config.Directory
   attributes:
     name: string
+    mode: octint optional
+    uid: int optional
+    gid: int optional
+    user: string optional
+    group: string optional
     ignore: list optional
   relations:
     root: Config optional
     source: Directory optional
+    directory: Directory optional
   tasks:
   - get_path
+  - make_dir
   - remove_dir
   - copy_dir
-  - load_packages
   - load_objects
+  - set_mode
 
 - kind: File
   configs: pyauto.local.config.File
   attributes:
     name: string
+    mode: octint optional
+    uid: int optional
+    gid: int optional
+    user: string optional
+    group: string optional
   relations:
     root: Config optional
     directory: Directory optional
@@ -42,8 +54,8 @@ kinds:
   - copy_file
   - render_template
   - resolve_variables
-  - load_packages
   - load_objects
+  - set_mode
 
 - kind: Variable
   configs: pyauto.local.config.Variable
@@ -52,7 +64,6 @@ kinds:
     select: string optional
     parse: string optional
     default: string optional
-
     envvar: string optional
     function: string optional
     map: map optional
