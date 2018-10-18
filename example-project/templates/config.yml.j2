@@ -1,0 +1,92 @@
+---
+kind: file.Config
+tag: workspace
+workspace_dir: ./generated
+
+{% for name, url in urls.items() %}
+# {{ name }}
+---
+kind: file.Directory
+tag: {{ name }}
+root: workspace
+name: {{ name }}
+labels:
+- all-configs
+---
+kind: file.Directory
+tag: {{ name }}-sitemap-downloads
+directory: {{ name }}
+name: sitemap-downloads
+---
+kind: file.Directory
+tag: {{ name }}-sitemaps
+directory: {{ name }}
+name: sitemaps
+---
+kind: file.Directory
+tag: {{ name }}-urlsets
+directory: {{ name }}
+name: urlsets
+---
+kind: file.Directory
+tag: {{ name }}-sitemap-urlsets
+directory: {{ name }}-sitemaps
+name: urlsets
+---
+kind: file.File
+tag: {{ name }}-robots
+directory: {{ name }}
+name: robots.yml
+---
+kind: shell.Command
+tag: {{ name }}-robots
+directory: {{ name }}
+stdout: robots.yml
+command: |-
+  PYTHONPATH=../.. python -m sitemaps.tool {{ name }} read-robots '{{ url }}'
+---
+kind: shell.Command
+tag: {{ name }}-sitemaps
+directory: {{ name }}
+command: |-
+  PYTHONPATH=../.. python -m sitemaps.tool {{ name }} read-sitemaps robots.yml sitemap-downloads/ sitemap-downloads.yml
+---
+kind: shell.Command
+tag: {{ name }}-extract
+directory: {{ name }}-sitemap-downloads
+command: |-
+  for f in $(ls) ; do gzip -t "./$f" && gzip -f -S "" -d "./$f" || : ; done
+---
+kind: shell.Command
+tag: {{ name }}-sorted
+directory: {{ name }}
+command: |-
+  PYTHONPATH=../.. python -m sitemaps.tool {{ name }} sort-sitemaps sorted.yml --downloads=sitemap-downloads/ --urlsets=urlsets/ --sitemaps=sitemaps/
+---
+kind: shell.Command
+tag: {{ name }}-to-csv
+directory: {{ name }}
+command: |-
+  PYTHONPATH=../.. python -m sitemaps.tool {{ name }} convert-to-csv sitemaps
+  PYTHONPATH=../.. python -m sitemaps.tool {{ name }} convert-to-csv urlsets
+---
+kind: shell.Command
+tag: {{ name }}-download-sitemaps
+directory: {{ name }}
+command: |-
+  PYTHONPATH=../.. python -m sitemaps.tool {{ name }} download-sitemaps sitemaps sitemaps/urlsets
+---
+kind: shell.Command
+tag: {{ name }}-extract-sitemaps-urlsets
+directory: {{ name }}-sitemap-urlsets
+command: |-
+  for f in $(ls) ; do gzip -t "./$f" && gzip -f -S "" -d "./$f" || : ; done
+---
+kind: shell.Command
+tag: {{ name }}-sitemap-urlsets-to-csv
+directory: {{ name }}
+command: |-
+  PYTHONPATH=../.. python -m sitemaps.tool {{ name }} convert-to-csv sitemaps/urlsets
+
+
+{% endfor %}

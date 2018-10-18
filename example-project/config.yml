@@ -1,0 +1,106 @@
+---
+kind: file.Config
+tag: workspace
+workspace_dir: config
+---
+kind: file.Directory
+tag: templates
+name: templates
+---
+kind: file.File
+tag: config-template
+directory: templates
+name: config.yml.j2
+---
+kind: file.File
+tag: tasks-template
+directory: templates
+name: tasks.yml.j2
+
+---
+kind: file.File
+tag: all-configs
+root: workspace
+name: all-configs.yml
+template: config-template
+variables:
+  - all-configs
+---
+kind: file.File
+tag: all-config-tasks
+root: workspace
+name: all-config-tasks.yml
+template: tasks-template
+variables:
+  - all-configs
+---
+kind: file.Variable
+tag: all-configs
+map:
+  urls:
+    wapo: https://www.washingtonpost.com/robots.txt
+    nytimes: https://www.nytimes.com/robots.txt
+    bbc: https://www.bbc.com/robots.txt
+    aljaz: http://www.aljazeera.net/robots.txt
+    yahoo: https://www.yahoo.com/robots.txt
+    hufpo: http://www.huffingtonpost.com/robots.txt
+    cnn: http://www.cnn.com/robots.txt
+    thehill: http://thehill.com/robots.txt
+    foxnews: http://www.foxnews.com/robots.txt
+    vox: https://www.vox.com/robots.txt
+    mic: https://mic.com/robots.txt
+    reuters: https://www.reuters.com/robots.txt
+    tribune: http://www.chicagotribune.com/robots.txt
+    theverge: https://www.theverge.com/robots.txt
+    msnbc: http://www.msnbc.com/robots.txt
+    cnbc: https://www.cnbc.com/robots.txt
+    assoc: https://www.ap.org
+    nypost: https://nypost.com/robots.txt
+    usatoday: https://www.usatoday.com/robots.txt
+    bloomberg: https://www.bloomberg.com/robots.txt
+    cbsnews: https://www.cbsnews.com/robots.txt
+    slate: http://www.slate.com/robots.txt
+    nbcnews: https://www.nbcnews.com/robots.txt
+    buzzfeed: https://www.buzzfeed.com/robots.txt
+    latimes: http://www.latimes.com/robots.txt
+    abcnews: http://abcnews.go.com/robots.txt
+    aol: https://www.aol.com/robots.txt
+    dailybeast: https://www.thedailybeast.com/robots.txt
+    newsweek: http://www.newsweek.com/robots.txt
+    guardian: https://www.theguardian.com/robots.txt
+    dailymail: http://www.dailymail.co.uk/robots.txt
+    telegraph: http://www.telegraph.co.uk/robots.txt
+    wsj: https://www.wsj.com/robots.txt
+    theblaze: http://www.theblaze.com/robots.txt
+    usnews: https://www.usnews.com/robots.txt
+    washtimes: https://www.washingtontimes.com/robots.txt
+    politico: https://www.politico.com/robots.txt
+    cbs_chicago: http://chicago.cbslocal.com/robots.txt
+    cbs_los_angeles: http://losangeles.cbslocal.com/robots.txt
+    mercurynews: https://www.mercurynews.com/robots.txt
+    seattletimes: https://www.seattletimes.com/robots.txt
+    miamiherald: http://www.miamiherald.com/robots.txt
+    independent: http://www.independent.co.uk/robots.txt
+    sfgate: http://www.sfgate.com/robots.txt
+    hollywoodreporter: https://www.hollywoodreporter.com/robots.txt
+    arstechnica: https://arstechnica.com/robots.txt
+    medium: https://medium.com/robots.txt
+    theregister: https://www.theregister.co.uk/robots.txt
+    mashable: http://mashable.com/robots.txt
+    quartz: https://qz.com/robots.txt
+    wired: https://www.wired.com/robots.txt
+    sfchronicle: http://www.sfchronicle.com/robots.txt
+    nydailynews: http://www.nydailynews.com/robots.txt
+    weather: https://weather.com/robots.txt
+    newsmailru: https://news.mail.ru/robots.txt
+    scientificamerican: https://www.scientificamerican.com/robots.txt
+    patheos: http://www.patheos.com/robots.txt
+    abcaction: https://www.abcactionnews.com/robots.txt
+    marketwatch: https://www.marketwatch.com/robots.txt
+    mirror: https://www.mirror.co.uk/robots.txt
+    thetimes: https://www.thetimes.co.uk/robots.txt
+    sky: https://news.sky.com/robots.txt
+    jpost: https://www.jpost.com/robots.txt
+    crunchbase: https://www.crunchbase.com/robots.txt
+    techcrunch: https://techcrunch.com/robots.txt
+    vanityfair: https://www.vanityfair.com/robots.txt

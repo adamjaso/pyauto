@@ -1,0 +1,6 @@
+pyauto.core==1.0.0a14
+pyauto.local==1.0.0a6
+pyauto.shell==1.0.0a1
+requests
+reppy
+lxml

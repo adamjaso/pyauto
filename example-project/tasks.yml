@@ -1,0 +1,10 @@
+arguments:
+  none: {}
+sequences:
+
+  create_configs:
+    none:
+      - task: file.Config.init_workspace workspace
+      - task: file.File.render_template all-configs
+      - task: file.File.render_template all-config-tasks
+

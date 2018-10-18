@@ -1,0 +1,67 @@
+arguments:
+  none: {}
+  site: {site: file.Directory}
+sequences:
+{% for name, url in urls.items() %}
+# {{ name }}
+  {{ name }}_init:
+    none:
+      - task: file.Config.init_workspace workspace
+        #- task: file.Directory.remove_dir {{ name }}
+      - task: file.Directory.make_dir {{ name }}
+      - task: file.Directory.make_dir {{ name }}-sitemap-downloads
+      - task: file.Directory.make_dir {{ name }}-sitemaps
+      - task: file.Directory.make_dir {{ name }}-urlsets
+      - task: file.Directory.make_dir {{ name }}-sitemap-urlsets
+
+  {{ name }}_get_robots:
+    none:
+      - task: shell.Command.run_command {{ name }}-robots
+      - task: shell.Command.run_command {{ name }}-sitemaps
+      - task: shell.Command.run_command {{ name }}-extract
+      - task: shell.Command.run_command {{ name }}-sorted
+      - task: shell.Command.run_command {{ name }}-to-csv
+      - task: shell.Command.run_command {{ name }}-download-sitemaps
+      - task: shell.Command.run_command {{ name }}-extract-sitemaps-urlsets
+
+  {{ name }}_urlsets_to_csv:
+    none:
+      - task: shell.Command.run_command {{ name }}-sitemap-urlsets-to-csv
+
+  {{ name }}_all:
+    none:
+      - seq: {{ name }}_init
+      - seq: {{ name }}_get_robots
+      - seq: {{ name }}_urlsets_to_csv
+
+{% endfor %}
+{% raw %}
+  site_init:
+    site:
+      - task: file.Config.init_workspace workspace
+      - task: file.Directory.make_dir {{site.tag}}
+      - task: file.Directory.make_dir {{site.tag}}-sitemap-downloads
+      - task: file.Directory.make_dir {{site.tag}}-sitemaps
+      - task: file.Directory.make_dir {{site.tag}}-urlsets
+      - task: file.Directory.make_dir {{site.tag}}-sitemap-urlsets
+
+  site_get_robots:
+    site:
+      - task: shell.Command.run_command {{site.tag}}-robots
+      - task: shell.Command.run_command {{site.tag}}-sitemaps
+      - task: shell.Command.run_command {{site.tag}}-extract
+      - task: shell.Command.run_command {{site.tag}}-sorted
+      - task: shell.Command.run_command {{site.tag}}-to-csv
+      - task: shell.Command.run_command {{site.tag}}-download-sitemaps
+      - task: shell.Command.run_command {{site.tag}}-extract-sitemaps-urlsets
+
+  site_urlsets_to_csv:
+    site:
+      - task: shell.Command.run_command {{site.tag}}-sitemap-urlsets-to-csv
+
+  site_all:
+    site:
+      - seq: site_init
+      - seq: site_get_robots
+      - seq: site_urlsets_to_csv
+{% endraw %}
