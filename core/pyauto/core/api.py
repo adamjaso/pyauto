@@ -341,6 +341,10 @@ class KindAttributeDetail(object):
 
 class AttributeDetail(object):
     parsers = {
+        'int': lambda n: int(str(n)),
+        'hexint': lambda n: int(str(n), 16),
+        'octint': lambda n: int(str(n), 8),
+        'float': lambda n: float(str(n)),
         'string': six.text_type,
         'path': os.path.abspath,
         'envvar': os.getenv,
